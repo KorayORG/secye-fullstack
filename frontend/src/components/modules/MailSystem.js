@@ -91,7 +91,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
 
   const loadEmployees = async () => {
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/employees`, {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/employees`, {
         params: { limit: 100 }
       });
       
