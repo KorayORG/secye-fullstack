@@ -115,6 +115,20 @@ class RegisterIndividualRequest(BaseModel):
     company_type: CompanyType
     company_id: str
 
+class CorporateApplicationRequest(BaseModel):
+    mode: Literal['existing', 'new']
+    target: Union[
+        Dict[str, str],  # {'mode': 'existing', 'company_id': '...'}
+        Dict[str, Any]   # {'mode': 'new', 'company_type': '...', 'new_company_payload': {...}}
+    ]
+    applicant: Dict[str, str]  # {'full_name': '...', 'phone': '...', 'email': '...'}
+    password: str
+
+class ApplicationResponse(BaseModel):
+    success: bool
+    message: str
+    application_id: Optional[str] = None
+
 class LoginResponse(BaseModel):
     success: bool
     user_id: str
