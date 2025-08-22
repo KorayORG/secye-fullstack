@@ -318,6 +318,7 @@ const SupplierPanel = () => {
             <SystemSettings 
               companyId={getCompanyIdFromPath()} 
               userRole={userProfile?.role}
+              companyType="supplier"
             />
           </TabsContent>
 
