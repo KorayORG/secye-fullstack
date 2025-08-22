@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Complete Phase 1 and Phase 2 of the Seç Ye application development. Phase 1 includes Corporate Panel Core Modules (Çalışanlar/Employees, Vardiyalar/Shifts, Catering Firmaları/Catering Companies). Phase 2 includes System & Communication modules (Sistem/System, Mail/Internal messaging). Then lay foundations for Phase 3 (Catering & Supplier Panels)."
+user_problem_statement: "Comprehensive development of Seç Ye application with detailed Corporate Panel, Catering Panel, and Supplier Panel modules plus Individual User Interface. Implement: 1) Corporate Panel (6 modules): Genel (dashboard/stats), Çalışanlar (individual/corporate/applications), Vardiyalar (time/day management), Sistem (company info/audit/license), Catering Firmaları (list/offers), Mail (internal messaging). 2) Catering Panel (6 modules): Similar structure with menu upload system, statistics by shifts, supplier store integration. 3) Supplier Panel (6 modules): Store management (product catalog), order system. 4) Individual User Interface: uwufufu-style selection game, rating system, request-suggestion forum. Plus URL protection and secure routing for all user types."
 
 backend:
   - task: "Employee Management APIs"
