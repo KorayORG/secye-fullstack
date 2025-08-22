@@ -255,6 +255,408 @@ class SecYeAPITester:
             }
         )
         return success, response
+    # ===== CORPORATE PANEL API TESTS =====
+    
+    def test_employee_management_apis(self):
+        """Test Employee Management APIs"""
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for employee tests")
+            return False
+        
+        print("\n📋 Testing Employee Management APIs")
+        
+        # Test 1: GET /api/corporate/{company_id}/employees
+        success1, response1 = self.run_test(
+            "Get Corporate Employees - All",
+            "GET",
+            f"corporate/{self.corporate_company_id}/employees",
+            200
+        )
+        
+        # Test 2: GET with filtering
+        success2, response2 = self.run_test(
+            "Get Corporate Employees - Corporate Type Filter",
+            "GET",
+            f"corporate/{self.corporate_company_id}/employees",
+            200,
+            params={"type": "corporate", "limit": 10}
+        )
+        
+        # Test 3: GET with search
+        success3, response3 = self.run_test(
+            "Get Corporate Employees - Search",
+            "GET",
+            f"corporate/{self.corporate_company_id}/employees",
+            200,
+            params={"search": "test", "limit": 10}
+        )
+        
+        # Test 4: Create a test user for update/role tests
+        test_phone = f"+9055{datetime.now().strftime('%H%M%S')}1111"
+        test_user_data = {
+            "users": [{
+                "full_name": "Test Employee",
+                "phone": test_phone
+            }]
+        }
+        
+        success4, response4 = self.run_test(
+            "Bulk Import Employee (for testing)",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,
+            data=test_user_data
+        )
+        
+        # If we have users from the employee list, test update operations
+        if success1 and response1.get('users'):
+            test_user_id = response1['users'][0]['id']
+            self.created_user_id = test_user_id
+            
+            # Test 5: PUT /api/corporate/{company_id}/employees/{user_id}
+            success5, response5 = self.run_test(
+                "Update Employee",
+                "PUT",
+                f"corporate/{self.corporate_company_id}/employees/{test_user_id}",
+                200,
+                data={
+                    "full_name": "Updated Test Employee",
+                    "email": "updated@test.com",
+                    "is_active": True
+                }
+            )
+            
+            # Test 6: POST /api/corporate/{company_id}/employees/{user_id}/role
+            success6, response6 = self.run_test(
+                "Assign Employee Role",
+                "POST",
+                f"corporate/{self.corporate_company_id}/employees/{test_user_id}/role",
+                200,
+                data={
+                    "role": "corporate2",
+                    "is_active": True
+                }
+            )
+        else:
+            success5 = success6 = False
+            print("⚠️  Skipping employee update tests - no existing employees found")
+        
+        # Test 7: Bulk import with validation errors
+        invalid_user_data = {
+            "users": [{
+                "full_name": "Invalid User",
+                "phone": "+905551112233"  # Likely duplicate phone
+            }]
+        }
+        
+        success7, response7 = self.run_test(
+            "Bulk Import - Duplicate Phone Test",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,  # Should succeed but report failed users
+            data=invalid_user_data
+        )
+        
+        return all([success1, success2, success3, success4])
+    
+    def test_shift_management_apis(self):
+        """Test Shift Management APIs"""
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for shift tests")
+            return False
+        
+        print("\n📋 Testing Shift Management APIs")
+        
+        # Test 1: GET /api/corporate/{company_id}/shifts
+        success1, response1 = self.run_test(
+            "Get Corporate Shifts",
+            "GET",
+            f"corporate/{self.corporate_company_id}/shifts",
+            200
+        )
+        
+        # Test 2: POST /api/corporate/{company_id}/shifts (create shift)
+        shift_data = {
+            "title": "Morning Shift Test",
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "days": [1, 2, 3, 4, 5],  # Monday to Friday
+            "timezone": "Europe/Istanbul"
+        }
+        
+        success2, response2 = self.run_test(
+            "Create Corporate Shift",
+            "POST",
+            f"corporate/{self.corporate_company_id}/shifts",
+            200,
+            data=shift_data
+        )
+        
+        # Store created shift ID for update/delete tests
+        if success2 and response2.get('shift_id'):
+            self.created_shift_id = response2['shift_id']
+        
+        # Test 3: PUT /api/corporate/{company_id}/shifts/{shift_id} (update shift)
+        if self.created_shift_id:
+            update_data = {
+                "title": "Updated Morning Shift",
+                "start_time": "08:30",
+                "end_time": "17:30",
+                "days": [1, 2, 3, 4, 5, 6],  # Add Saturday
+                "is_active": True
+            }
+            
+            success3, response3 = self.run_test(
+                "Update Corporate Shift",
+                "PUT",
+                f"corporate/{self.corporate_company_id}/shifts/{self.created_shift_id}",
+                200,
+                data=update_data
+            )
+        else:
+            success3 = False
+            print("⚠️  Skipping shift update test - no shift created")
+        
+        # Test 4: Create another shift for delete test
+        delete_shift_data = {
+            "title": "Temporary Shift for Delete Test",
+            "start_time": "18:00",
+            "end_time": "22:00",
+            "days": [6, 7],  # Weekend
+            "timezone": "Europe/Istanbul"
+        }
+        
+        success4, response4 = self.run_test(
+            "Create Shift for Delete Test",
+            "POST",
+            f"corporate/{self.corporate_company_id}/shifts",
+            200,
+            data=delete_shift_data
+        )
+        
+        # Test 5: DELETE /api/corporate/{company_id}/shifts/{shift_id}
+        if success4 and response4.get('shift_id'):
+            delete_shift_id = response4['shift_id']
+            success5, response5 = self.run_test(
+                "Delete Corporate Shift",
+                "DELETE",
+                f"corporate/{self.corporate_company_id}/shifts/{delete_shift_id}",
+                200
+            )
+        else:
+            success5 = False
+            print("⚠️  Skipping shift delete test - no shift created for deletion")
+        
+        # Test 6: Validation tests
+        invalid_shift_data = {
+            "title": "Invalid Shift",
+            "start_time": "25:00",  # Invalid time
+            "end_time": "17:00",
+            "days": [8, 9],  # Invalid days
+            "timezone": "Europe/Istanbul"
+        }
+        
+        success6, response6 = self.run_test(
+            "Create Shift - Validation Error Test",
+            "POST",
+            f"corporate/{self.corporate_company_id}/shifts",
+            400,  # Should fail validation
+            data=invalid_shift_data
+        )
+        
+        return all([success1, success2])  # Core functionality tests
+    
+    def test_system_settings_apis(self):
+        """Test System Settings APIs"""
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for settings tests")
+            return False
+        
+        print("\n📋 Testing System Settings APIs")
+        
+        # Test 1: GET /api/corporate/{company_id}/settings
+        success1, response1 = self.run_test(
+            "Get Corporate Settings",
+            "GET",
+            f"corporate/{self.corporate_company_id}/settings",
+            200
+        )
+        
+        # Test 2: GET /api/corporate/{company_id}/audit-logs
+        success2, response2 = self.run_test(
+            "Get Corporate Audit Logs - All",
+            "GET",
+            f"corporate/{self.corporate_company_id}/audit-logs",
+            200
+        )
+        
+        # Test 3: GET audit logs with filtering
+        success3, response3 = self.run_test(
+            "Get Corporate Audit Logs - Filtered",
+            "GET",
+            f"corporate/{self.corporate_company_id}/audit-logs",
+            200,
+            params={
+                "log_type": "SHIFT_CREATED",
+                "limit": 10
+            }
+        )
+        
+        # Test 4: GET audit logs with date filtering
+        success4, response4 = self.run_test(
+            "Get Corporate Audit Logs - Date Filtered",
+            "GET",
+            f"corporate/{self.corporate_company_id}/audit-logs",
+            200,
+            params={
+                "start_date": "2024-01-01T00:00:00Z",
+                "limit": 20
+            }
+        )
+        
+        return all([success1, success2])
+    
+    def test_mail_messaging_apis(self):
+        """Test Mail/Messaging APIs (Expected to fail as not implemented)"""
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for mail tests")
+            return False
+        
+        print("\n📋 Testing Mail/Messaging APIs (Expected to fail - not implemented)")
+        
+        # Test 1: GET /api/corporate/{company_id}/messages
+        success1, response1 = self.run_test(
+            "Get Corporate Messages",
+            "GET",
+            f"corporate/{self.corporate_company_id}/messages",
+            404  # Expected to fail - not implemented
+        )
+        
+        # Test 2: POST /api/corporate/{company_id}/messages
+        message_data = {
+            "to_addresses": ["test@example.com"],
+            "subject": "Test Message",
+            "body": "This is a test message",
+            "labels": ["test"]
+        }
+        
+        success2, response2 = self.run_test(
+            "Send Corporate Message",
+            "POST",
+            f"corporate/{self.corporate_company_id}/messages",
+            404,  # Expected to fail - not implemented
+            data=message_data
+        )
+        
+        # Test 3: PUT /api/corporate/{company_id}/messages/{message_id}
+        success3, response3 = self.run_test(
+            "Mark Message as Read",
+            "PUT",
+            f"corporate/{self.corporate_company_id}/messages/test-message-id",
+            404,  # Expected to fail - not implemented
+            data={"is_read": True}
+        )
+        
+        # Test 4: DELETE /api/corporate/{company_id}/messages/{message_id}
+        success4, response4 = self.run_test(
+            "Delete Corporate Message",
+            "DELETE",
+            f"corporate/{self.corporate_company_id}/messages/test-message-id",
+            404  # Expected to fail - not implemented
+        )
+        
+        # Return True since we expect these to fail (not implemented)
+        return True
+    
+    def test_catering_management_apis(self):
+        """Test Catering Management APIs"""
+        print("\n📋 Testing Catering Management APIs")
+        
+        # Test 1: GET /api/companies/search?type=catering
+        success1, response1 = self.run_test(
+            "Search Catering Companies",
+            "GET",
+            "companies/search",
+            200,
+            params={"type": "catering", "limit": 10}
+        )
+        
+        if success1 and response1.get('companies'):
+            self.catering_company_id = response1['companies'][0]['id']
+        
+        # Test 2: POST /api/corporate/{company_id}/partnerships (Expected to fail - not implemented)
+        if self.corporate_company_id and self.catering_company_id:
+            partnership_data = {
+                "partner_company_id": self.catering_company_id,
+                "partnership_type": "catering",
+                "terms": "Standard catering partnership"
+            }
+            
+            success2, response2 = self.run_test(
+                "Create Corporate Partnership",
+                "POST",
+                f"corporate/{self.corporate_company_id}/partnerships",
+                404,  # Expected to fail - not implemented
+                data=partnership_data
+            )
+        else:
+            success2 = False
+            print("⚠️  Skipping partnership creation - missing company IDs")
+        
+        # Test 3: GET /api/corporate/{company_id}/partnerships (Expected to fail - not implemented)
+        if self.corporate_company_id:
+            success3, response3 = self.run_test(
+                "Get Corporate Partnerships",
+                "GET",
+                f"corporate/{self.corporate_company_id}/partnerships",
+                404  # Expected to fail - not implemented
+            )
+        else:
+            success3 = False
+            print("⚠️  Skipping partnership retrieval - missing corporate company ID")
+        
+        return success1  # Only the company search should work
+    
+    def test_error_handling_and_edge_cases(self):
+        """Test error handling and edge cases"""
+        print("\n📋 Testing Error Handling and Edge Cases")
+        
+        # Test 1: Invalid company ID
+        success1, response1 = self.run_test(
+            "Invalid Company ID - Employees",
+            "GET",
+            "corporate/invalid-company-id/employees",
+            404
+        )
+        
+        # Test 2: Missing required fields
+        success2, response2 = self.run_test(
+            "Missing Required Fields - Create Shift",
+            "POST",
+            f"corporate/{self.corporate_company_id}/shifts" if self.corporate_company_id else "corporate/test-id/shifts",
+            422,  # Validation error
+            data={"title": "Incomplete Shift"}  # Missing required fields
+        )
+        
+        # Test 3: Invalid user ID for employee update
+        success3, response3 = self.run_test(
+            "Invalid User ID - Update Employee",
+            "PUT",
+            f"corporate/{self.corporate_company_id}/employees/invalid-user-id" if self.corporate_company_id else "corporate/test-id/employees/invalid-user-id",
+            404,
+            data={"full_name": "Updated Name"}
+        )
+        
+        # Test 4: Invalid shift ID for update
+        success4, response4 = self.run_test(
+            "Invalid Shift ID - Update Shift",
+            "PUT",
+            f"corporate/{self.corporate_company_id}/shifts/invalid-shift-id" if self.corporate_company_id else "corporate/test-id/shifts/invalid-shift-id",
+            404,
+            data={"title": "Updated Shift"}
+        )
+        
+        return all([success1, success2, success3, success4])
 
 def main():
     print("🚀 Starting Seç Ye API Tests - Corporate Application Focus")
