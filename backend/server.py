@@ -4313,7 +4313,20 @@ async def get_user_menu_choices(
         # Get choices
         choices = await db.menu_choices.find(filter_query).sort("created_at", -1).to_list(None)
         
-        return {"choices": choices}
+        # Format choices for JSON serialization
+        formatted_choices = []
+        for choice in choices:
+            formatted_choice = {
+                "id": choice["id"],
+                "user_id": choice["user_id"],
+                "menu_frame_id": choice["menu_frame_id"],
+                "day": choice["day"],
+                "choice": choice["choice"],
+                "created_at": choice["created_at"].isoformat()
+            }
+            formatted_choices.append(formatted_choice)
+        
+        return {"choices": formatted_choices}
         
     except Exception as e:
         logger.error(f"Get menu choices error: {e}")
