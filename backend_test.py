@@ -300,12 +300,30 @@ class SecYeAPITester:
             }]
         }
         
+        # Test 4: Bulk import with realistic data (re-test for 500 error fix)
+        realistic_user_data = {
+            "users": [
+                {
+                    "full_name": "Ahmet Yılmaz",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}2222"
+                },
+                {
+                    "full_name": "Fatma Demir", 
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}3333"
+                },
+                {
+                    "full_name": "Mehmet Kaya",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}4444"
+                }
+            ]
+        }
+        
         success4, response4 = self.run_test(
-            "Bulk Import Employee (for testing)",
+            "Bulk Import Employees - Realistic Data (500 Error Fix Test)",
             "POST",
             f"corporate/{self.corporate_company_id}/employees/bulk-import",
             200,
-            data=test_user_data
+            data=realistic_user_data
         )
         
         # If we have users from the employee list, test update operations
