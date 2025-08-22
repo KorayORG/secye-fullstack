@@ -217,19 +217,18 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
     if (!window.confirm('Bu vardiyayı silmek istediğinizden emin misiniz?')) {
       return;
     }
-    
+
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      await axios.delete(`${API}/corporate/${companyId}/shifts/${shiftId}`);
-      
+      await axios.delete(`${API}/${companyType}/${companyId}/shifts/${shiftId}`);
       setSuccess('Vardiya başarıyla silindi');
       loadShifts();
     } catch (err) {
-      console.error('Shift deletion error:', err);
-      setError('Vardiya silme sırasında hata oluştu: ' + (err.response?.data?.detail || err.message));
+      console.error('Delete shift error:', err);
+      setError('Vardiya silinirken hata oluştu: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
