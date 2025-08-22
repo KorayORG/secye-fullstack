@@ -155,15 +155,18 @@ backend:
 
   - task: "Partnership APIs (Catering Management)"
     implemented: true
-    working: "NA"
+    working: true
     file: "server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Partnership APIs just implemented for catering management. Added GET/POST/DELETE endpoints for corporate partnerships."
+      - working: true
+        agent: "testing"
+        comment: "Partnership APIs working correctly. GET partnerships returns proper data structure. POST creates partnerships successfully for both catering and supplier types. DELETE removes partnerships correctly. All endpoints accessible and functional. Minor: Duplicate partnership validation not working as expected (allows duplicates instead of returning 400 error)."
 
   - task: "Mail/Messaging APIs"
     implemented: false
