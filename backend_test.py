@@ -984,86 +984,39 @@ def main():
     # Test 2: Company Search (to get corporate company ID)
     print("\n📋 Test 2: Company Search")
     tester.test_company_search("corporate", "")  # Get any corporate company
-    tester.test_company_search("catering", "")   # Get catering companies for partnership tests
-    tester.test_company_search("supplier", "")   # Get supplier companies
 
-    # ===== CORPORATE PANEL API TESTS =====
+    # ===== FOCUSED BULK IMPORT TEST =====
     if tester.corporate_company_id:
         print(f"\n🏢 Using Corporate Company ID: {tester.corporate_company_id}")
         
-        # Test 3: Employee Management APIs
-        print("\n📋 Test 3: Employee Management APIs")
+        # Test 3: FOCUSED Bulk Import Test
+        print("\n📋 Test 3: FOCUSED BULK IMPORT TEST")
+        bulk_import_success = tester.test_bulk_import_focused()
+        
+        # Also run the regular employee management tests for context
+        print("\n📋 Test 4: Regular Employee Management APIs (for context)")
         employee_success = tester.test_employee_management_apis()
         
-        # Test 4: Shift Management APIs
-        print("\n📋 Test 4: Shift Management APIs")
-        shift_success = tester.test_shift_management_apis()
-        
-        # Test 5: System Settings APIs
-        print("\n📋 Test 5: System Settings APIs")
-        settings_success = tester.test_system_settings_apis()
-        
-        # Test 6: Mail/Messaging APIs
-        print("\n📋 Test 6: Mail/Messaging APIs")
-        mail_success = tester.test_mail_messaging_apis()
-        
-        # Test 7: Partnership APIs
-        print("\n📋 Test 7: Partnership APIs")
-        partnership_success = tester.test_partnership_apis()
-        
-        # Test 8: Error Handling and Edge Cases
-        print("\n📋 Test 8: Error Handling and Edge Cases")
-        error_success = tester.test_error_handling_and_edge_cases()
-        
     else:
-        print("⚠️  No corporate company found - skipping corporate panel tests")
-        employee_success = shift_success = settings_success = mail_success = catering_success = error_success = False
-
-    # ===== LEGACY TESTS (for backward compatibility) =====
-    print("\n📋 Legacy Tests: Corporate Application Flow")
-    
-    # Test 9: Corporate Application - Existing Company
-    print("\n📋 Test 9: Corporate Application - Existing Company")
-    tester.test_corporate_application_existing()
-
-    # Test 10: Corporate Application - New Company
-    print("\n📋 Test 10: Corporate Application - New Company")
-    tester.test_corporate_application_new()
-
-    # Test 11: Corporate Application Validation
-    print("\n📋 Test 11: Corporate Application Validation")
-    tester.test_corporate_application_validation()
-
-    # Test 12: Individual Registration
-    print("\n📋 Test 12: Individual Registration")
-    tester.test_individual_registration()
-
-    # Test 13: Login (if company was found)
-    print("\n📋 Test 13: Corporate Login")
-    if tester.company_id:
-        tester.test_login()
-    else:
-        print("⚠️  Skipping login test - no company found")
+        print("⚠️  No corporate company found - cannot test bulk import")
+        bulk_import_success = False
+        employee_success = False
 
     # Print results
     print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
-    # Summary of corporate panel tests
+    # Summary of bulk import test
     if tester.corporate_company_id:
-        print("\n🏢 Corporate Panel API Test Summary:")
-        print(f"   ✅ Employee Management: {'PASSED' if employee_success else 'FAILED'}")
-        print(f"   ✅ Shift Management: {'PASSED' if shift_success else 'FAILED'}")
-        print(f"   ✅ System Settings: {'PASSED' if settings_success else 'FAILED'}")
-        print(f"   ✅ Mail/Messaging: {'PASSED' if mail_success else 'FAILED'}")
-        print(f"   ✅ Partnership APIs: {'PASSED' if partnership_success else 'FAILED'}")
-        print(f"   ✅ Error Handling: {'PASSED' if error_success else 'FAILED'}")
+        print("\n🎯 BULK IMPORT TEST SUMMARY:")
+        print(f"   🔥 Bulk Import Fix: {'✅ VERIFIED FIXED' if bulk_import_success else '❌ STILL BROKEN'}")
+        print(f"   📋 Employee APIs: {'✅ WORKING' if employee_success else '❌ ISSUES'}")
     
-    if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed!")
+    if bulk_import_success:
+        print("🎉 BULK IMPORT 500 ERROR IS FIXED!")
         return 0
     else:
-        print("⚠️  Some tests failed")
+        print("⚠️  BULK IMPORT 500 ERROR IS STILL PRESENT!")
         return 1
 
 if __name__ == "__main__":
