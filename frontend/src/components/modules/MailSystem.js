@@ -141,7 +141,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
     setSuccess('');
 
     try {
-      await axios.post(`${API}/corporate/${companyId}/messages`, {
+      await axios.post(`${API}/${companyType}/${companyId}/messages`, {
         to_addresses: [selectedMessage.from_address],
         subject: `Re: ${selectedMessage.subject}`,
         body: replyForm.body,
