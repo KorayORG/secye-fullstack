@@ -150,7 +150,7 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     setSuccess('');
 
     try {
-      await axios.post(`${API}/corporate/${companyId}/employees/${employeeId}/role`, {
+      await axios.post(`${API}/${companyType}/${companyId}/employees/${employeeId}/role`, {
         role: newRole,
         is_active: true
       });
