@@ -792,8 +792,186 @@ class SecYeAPITester:
         
         return all([success1, success2, success3, success4])
 
+    def test_bulk_import_focused(self):
+        """Focused test for bulk import API to verify 500 error fix"""
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for bulk import test")
+            return False
+        
+        print("\n📋 FOCUSED BULK IMPORT TEST - Verifying 500 Error Fix")
+        print("=" * 60)
+        
+        # Test 1: Valid data (should succeed)
+        print("\n🔍 Test 1: Valid realistic data")
+        valid_data = {
+            "users": [
+                {
+                    "full_name": "Ahmet Yılmaz",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}1001"
+                },
+                {
+                    "full_name": "Fatma Demir", 
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}1002"
+                },
+                {
+                    "full_name": "Mehmet Kaya",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}1003"
+                },
+                {
+                    "full_name": "Ayşe Özkan",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}1004"
+                },
+                {
+                    "full_name": "Mustafa Çelik",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}1005"
+                }
+            ]
+        }
+        
+        success1, response1 = self.run_test(
+            "Bulk Import - Valid Realistic Data",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,
+            data=valid_data
+        )
+        
+        # Test 2: Duplicate phone numbers (should succeed but report failed users)
+        print("\n🔍 Test 2: Duplicate phone numbers")
+        duplicate_data = {
+            "users": [
+                {
+                    "full_name": "Yeni Kullanıcı",
+                    "phone": valid_data["users"][0]["phone"]  # Use same phone as first user
+                },
+                {
+                    "full_name": "Başka Kullanıcı",
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}2001"  # New phone
+                }
+            ]
+        }
+        
+        success2, response2 = self.run_test(
+            "Bulk Import - Duplicate Phone Numbers",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,  # Should succeed but report failed users
+            data=duplicate_data
+        )
+        
+        # Test 3: Invalid data format (should handle gracefully)
+        print("\n🔍 Test 3: Invalid data format")
+        invalid_data = {
+            "users": [
+                {
+                    "full_name": "",  # Empty name
+                    "phone": f"+9055{datetime.now().strftime('%H%M%S')}3001"
+                },
+                {
+                    "full_name": "Valid Name",
+                    "phone": "invalid-phone"  # Invalid phone format
+                },
+                {
+                    # Missing phone field
+                    "full_name": "Missing Phone User"
+                }
+            ]
+        }
+        
+        success3, response3 = self.run_test(
+            "Bulk Import - Invalid Data Format",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,  # Should handle gracefully and report errors
+            data=invalid_data
+        )
+        
+        # Test 4: Large batch (stress test)
+        print("\n🔍 Test 4: Large batch stress test")
+        large_batch_data = {
+            "users": []
+        }
+        
+        # Generate 20 users for stress test
+        for i in range(20):
+            large_batch_data["users"].append({
+                "full_name": f"Test User {i+1}",
+                "phone": f"+9055{datetime.now().strftime('%H%M%S')}{i+1:04d}"
+            })
+        
+        success4, response4 = self.run_test(
+            "Bulk Import - Large Batch (20 users)",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,
+            data=large_batch_data
+        )
+        
+        # Test 5: Empty batch
+        print("\n🔍 Test 5: Empty batch")
+        empty_data = {"users": []}
+        
+        success5, response5 = self.run_test(
+            "Bulk Import - Empty Batch",
+            "POST",
+            f"corporate/{self.corporate_company_id}/employees/bulk-import",
+            200,  # Should handle gracefully
+            data=empty_data
+        )
+        
+        # Analyze results
+        print("\n📊 BULK IMPORT TEST ANALYSIS:")
+        print("=" * 40)
+        
+        if success1:
+            print("✅ Valid data test: PASSED")
+            if response1.get('imported_count', 0) > 0:
+                print(f"   → Successfully imported {response1.get('imported_count')} users")
+            if response1.get('failed_count', 0) > 0:
+                print(f"   → Failed to import {response1.get('failed_count')} users")
+        else:
+            print("❌ Valid data test: FAILED - This indicates 500 error is NOT fixed")
+        
+        if success2:
+            print("✅ Duplicate phone test: PASSED")
+            if response2.get('failed_count', 0) > 0:
+                print(f"   → Correctly rejected {response2.get('failed_count')} duplicate users")
+        else:
+            print("❌ Duplicate phone test: FAILED")
+        
+        if success3:
+            print("✅ Invalid data test: PASSED")
+            if response3.get('failed_count', 0) > 0:
+                print(f"   → Correctly handled {response3.get('failed_count')} invalid users")
+        else:
+            print("❌ Invalid data test: FAILED")
+        
+        if success4:
+            print("✅ Large batch test: PASSED")
+            if response4.get('imported_count', 0) > 0:
+                print(f"   → Successfully imported {response4.get('imported_count')} users from large batch")
+        else:
+            print("❌ Large batch test: FAILED")
+        
+        if success5:
+            print("✅ Empty batch test: PASSED")
+        else:
+            print("❌ Empty batch test: FAILED")
+        
+        # Overall assessment
+        critical_tests_passed = success1  # The most important test
+        print(f"\n🎯 CRITICAL ASSESSMENT:")
+        if critical_tests_passed:
+            print("✅ BULK IMPORT 500 ERROR APPEARS TO BE FIXED!")
+            print("   The API now handles valid data correctly.")
+        else:
+            print("❌ BULK IMPORT 500 ERROR IS STILL PRESENT!")
+            print("   The API is still failing on valid data.")
+        
+        return critical_tests_passed
+
 def main():
-    print("🚀 Starting Seç Ye API Tests - Corporate Panel Focus")
+    print("🚀 Starting Seç Ye API Tests - BULK IMPORT FOCUS")
     print("=" * 60)
     
     # Setup
