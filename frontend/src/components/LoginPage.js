@@ -319,7 +319,12 @@ const LoginPage = () => {
                               key={company.id}
                               className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                               onClick={() => {
-                                setLoginData(prev => ({...prev, companyId: company.id}));
+                                console.log('Corporate tab - Company selected:', company); // Debug log
+                                setLoginData(prev => {
+                                  const updated = {...prev, companyId: company.id};
+                                  console.log('Corporate tab - Updated loginData:', updated); // Debug log
+                                  return updated;
+                                });
                                 setCompanySearch(company.name);
                                 setCompanies([]);
                               }}
