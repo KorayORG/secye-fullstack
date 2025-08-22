@@ -309,6 +309,7 @@ const CateringPanel = () => {
             <EmployeeManagement 
               companyId={getCompanyIdFromPath()} 
               userRole={userProfile?.role}
+              companyType="catering"
             />
           </TabsContent>
 
