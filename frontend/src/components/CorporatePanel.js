@@ -276,7 +276,7 @@ const CorporatePanel = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={page} onValueChange={navigateToPage} className="space-y-6">
+        <Tabs value={page || 'general'} onValueChange={navigateToPage} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
             {getAvailableTabs().map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} className="flex items-center space-x-2">
