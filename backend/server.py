@@ -2052,6 +2052,650 @@ async def delete_corporate_message(
             detail="Mesaj silinemedi"
         )
 
+# ===== CATERING MESSAGE APIs =====
+@api_router.get("/catering/{company_id}/messages")
+async def get_catering_messages(
+    company_id: str,
+    user_id: str,
+    type: str = "inbox",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get catering messages for user"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        
+        # Build filter query based on message type
+        filter_query = {}
+        
+        if type == "inbox":
+            # Messages sent TO this user
+            filter_query["to_user_ids"] = user_id
+        elif type == "sent":
+            # Messages sent FROM this user  
+            filter_query["from_user_id"] = user_id
+        elif type == "archived":
+            # Messages with archive label
+            filter_query["$or"] = [
+                {"to_user_ids": user_id, "labels": "archived"},
+                {"from_user_id": user_id, "labels": "archived"}
+            ]
+        
+        # Get messages
+        messages = await db.messages.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(messages) > limit
+        if has_more:
+            messages = messages[:-1]
+        
+        # Format messages
+        result_messages = []
+        for msg in messages:
+            result_messages.append({
+                "id": msg["id"],
+                "from_user_id": msg["from_user_id"],
+                "from_address": msg["from_address"],
+                "to_addresses": msg["to_addresses"],
+                "subject": msg["subject"],
+                "body": msg["body"],
+                "labels": msg.get("labels", []),
+                "read_by": msg.get("read_by", []),
+                "attachments": msg.get("attachments", []),
+                "created_at": msg["created_at"].isoformat()
+            })
+        
+        return {
+            "messages": result_messages,
+            "total": len(result_messages),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get catering messages error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering mesajları alınamadı"
+        )
+
+@api_router.post("/catering/{company_id}/messages")
+async def send_catering_message(
+    company_id: str,
+    request: MailCreateRequest
+):
+    """Send a message within catering network"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        
+        # Extract user IDs from addresses
+        to_user_ids = []
+        for addr in request.to_addresses:
+            if "@" in addr:
+                user_id = addr.split("@")[0].split("<")[-1].strip()
+            else:
+                user_id = addr
+            to_user_ids.append(user_id)
+        
+        # Create message
+        message_id = str(uuid.uuid4())
+        message = {
+            "id": message_id,
+            "from_user_id": request.from_user_id,
+            "from_company_id": request.from_company_id,
+            "from_address": request.from_address or f"{request.from_user_id}@catering.sy",
+            "to_user_ids": to_user_ids,
+            "to_addresses": request.to_addresses,
+            "subject": request.subject,
+            "body": request.body,
+            "labels": request.labels or [],
+            "read_by": [],
+            "attachments": request.attachments or [],
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.messages.insert_one(message)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "MAIL_SENT",
+            "company_id": company_id,
+            "actor_id": request.from_user_id,
+            "meta": {
+                "message_id": message_id,
+                "subject": request.subject,
+                "recipient_count": len(to_user_ids)
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Catering mesajı gönderildi", "message_id": message_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send catering message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering mesajı gönderilemedi"
+        )
+
+@api_router.put("/catering/{company_id}/messages/{message_id}")
+async def update_catering_message(
+    company_id: str,
+    message_id: str,
+    request: MailUpdateRequest
+):
+    """Update a catering message"""
+    try:
+        # Verify message exists
+        message = await db.messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+        
+        # Prepare update data
+        update_data = {}
+        
+        if request.labels is not None:
+            update_data["labels"] = request.labels
+        
+        if request.is_read is not None and request.is_read:
+            read_by = message.get("read_by", [])
+            current_user_id = "current_user"
+            if current_user_id not in read_by:
+                read_by.append(current_user_id)
+            update_data["read_by"] = read_by
+        
+        if update_data:
+            await db.messages.update_one(
+                {"id": message_id},
+                {"$set": update_data}
+            )
+        
+        return {"success": True, "message": "Catering mesajı güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update catering message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering mesajı güncellenemedi"
+        )
+
+@api_router.delete("/catering/{company_id}/messages/{message_id}")
+async def delete_catering_message(
+    company_id: str,
+    message_id: str
+):
+    """Delete a catering message"""
+    try:
+        # Verify message exists
+        message = await db.messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+        
+        await db.messages.delete_one({"id": message_id})
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "MAIL_DELETED",
+            "company_id": company_id,
+            "meta": {
+                "message_id": message_id,
+                "subject": message.get("subject", "")
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Catering mesajı silindi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete catering message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering mesajı silinemedi"
+        )
+
+@api_router.get("/catering/{company_id}/employees")
+async def get_catering_employees(
+    company_id: str,
+    type: UserType = None,
+    status: str = None,
+    search: str = "",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get catering employees with filtering - ONLY users associated with this company"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        
+        # Get ALL users who have ANY relationship with this company
+        all_company_roles = await db.role_assignments.find({
+            "company_id": company_id
+        }).to_list(None)
+        
+        company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
+        
+        if not company_user_ids:
+            return EmployeeListResponse(users=[], total=0, has_more=False)
+        
+        # Build filter query - MUST restrict to company users only
+        filter_query = {"id": {"$in": company_user_ids}}
+        
+        if type == "corporate":
+            # Get users with corporate roles in THIS company
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"},
+                "is_active": True
+            }).to_list(None)
+            
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            filter_query["id"] = {"$in": corporate_user_ids}
+        elif type == "individual":
+            # Get users without corporate roles in THIS company
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"}
+            }).to_list(None)
+            
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
+            filter_query["id"] = {"$in": individual_user_ids}
+        
+        if status:
+            filter_query["is_active"] = status == "active"
+        
+        if search:
+            search_conditions = [
+                {"full_name": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}}
+            ]
+            filter_query = {"$and": [{"id": {"$in": filter_query["id"]["$in"]}}, {"$or": search_conditions}]}
+            if status:
+                filter_query["$and"].append({"is_active": status == "active"})
+        
+        # Get users
+        users = await db.users.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(users) > limit
+        if has_more:
+            users = users[:-1]
+        
+        # Get role information for each user
+        result_users = []
+        for user in users:
+            user_role = await db.role_assignments.find_one({
+                "user_id": user["id"],
+                "company_id": company_id,
+                "is_active": True
+            })
+            
+            result_users.append({
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"],
+                "email": user.get("email"),
+                "role": user_role["role"] if user_role else "individual",
+                "is_active": user["is_active"],
+                "created_at": user["created_at"].isoformat(),
+                "last_login_at": user.get("last_login_at").isoformat() if user.get("last_login_at") else None
+            })
+        
+        return EmployeeListResponse(
+            users=result_users,
+            total=len(result_users),
+            has_more=has_more
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get catering employees error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering çalışanları alınamadı"
+        )
+
+# ===== SUPPLIER MESSAGE APIs =====
+@api_router.get("/supplier/{company_id}/messages")
+async def get_supplier_messages(
+    company_id: str,
+    user_id: str,
+    type: str = "inbox",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get supplier messages for user"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
+        
+        # Build filter query based on message type
+        filter_query = {}
+        
+        if type == "inbox":
+            # Messages sent TO this user
+            filter_query["to_user_ids"] = user_id
+        elif type == "sent":
+            # Messages sent FROM this user  
+            filter_query["from_user_id"] = user_id
+        elif type == "archived":
+            # Messages with archive label
+            filter_query["$or"] = [
+                {"to_user_ids": user_id, "labels": "archived"},
+                {"from_user_id": user_id, "labels": "archived"}
+            ]
+        
+        # Get messages
+        messages = await db.messages.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(messages) > limit
+        if has_more:
+            messages = messages[:-1]
+        
+        # Format messages
+        result_messages = []
+        for msg in messages:
+            result_messages.append({
+                "id": msg["id"],
+                "from_user_id": msg["from_user_id"],
+                "from_address": msg["from_address"],
+                "to_addresses": msg["to_addresses"],
+                "subject": msg["subject"],
+                "body": msg["body"],
+                "labels": msg.get("labels", []),
+                "read_by": msg.get("read_by", []),
+                "attachments": msg.get("attachments", []),
+                "created_at": msg["created_at"].isoformat()
+            })
+        
+        return {
+            "messages": result_messages,
+            "total": len(result_messages),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier messages error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi mesajları alınamadı"
+        )
+
+@api_router.post("/supplier/{company_id}/messages")
+async def send_supplier_message(
+    company_id: str,
+    request: MailCreateRequest
+):
+    """Send a message within supplier network"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
+        
+        # Extract user IDs from addresses
+        to_user_ids = []
+        for addr in request.to_addresses:
+            if "@" in addr:
+                user_id = addr.split("@")[0].split("<")[-1].strip()
+            else:
+                user_id = addr
+            to_user_ids.append(user_id)
+        
+        # Create message
+        message_id = str(uuid.uuid4())
+        message = {
+            "id": message_id,
+            "from_user_id": request.from_user_id,
+            "from_company_id": request.from_company_id,
+            "from_address": request.from_address or f"{request.from_user_id}@supplier.sy",
+            "to_user_ids": to_user_ids,
+            "to_addresses": request.to_addresses,
+            "subject": request.subject,
+            "body": request.body,
+            "labels": request.labels or [],
+            "read_by": [],
+            "attachments": request.attachments or [],
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.messages.insert_one(message)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "MAIL_SENT",
+            "company_id": company_id,
+            "actor_id": request.from_user_id,
+            "meta": {
+                "message_id": message_id,
+                "subject": request.subject,
+                "recipient_count": len(to_user_ids)
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Tedarikçi mesajı gönderildi", "message_id": message_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send supplier message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi mesajı gönderilemedi"
+        )
+
+@api_router.put("/supplier/{company_id}/messages/{message_id}")
+async def update_supplier_message(
+    company_id: str,
+    message_id: str,
+    request: MailUpdateRequest
+):
+    """Update a supplier message"""
+    try:
+        # Verify message exists
+        message = await db.messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+        
+        # Prepare update data
+        update_data = {}
+        
+        if request.labels is not None:
+            update_data["labels"] = request.labels
+        
+        if request.is_read is not None and request.is_read:
+            read_by = message.get("read_by", [])
+            current_user_id = "current_user"
+            if current_user_id not in read_by:
+                read_by.append(current_user_id)
+            update_data["read_by"] = read_by
+        
+        if update_data:
+            await db.messages.update_one(
+                {"id": message_id},
+                {"$set": update_data}
+            )
+        
+        return {"success": True, "message": "Tedarikçi mesajı güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update supplier message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi mesajı güncellenemedi"
+        )
+
+@api_router.delete("/supplier/{company_id}/messages/{message_id}")
+async def delete_supplier_message(
+    company_id: str,
+    message_id: str
+):
+    """Delete a supplier message"""
+    try:
+        # Verify message exists
+        message = await db.messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+        
+        await db.messages.delete_one({"id": message_id})
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "MAIL_DELETED",
+            "company_id": company_id,
+            "meta": {
+                "message_id": message_id,
+                "subject": message.get("subject", "")
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Tedarikçi mesajı silindi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete supplier message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi mesajı silinemedi"
+        )
+
+@api_router.get("/supplier/{company_id}/employees")
+async def get_supplier_employees(
+    company_id: str,
+    type: UserType = None,
+    status: str = None,
+    search: str = "",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get supplier employees with filtering - ONLY users associated with this company"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
+        
+        # Get ALL users who have ANY relationship with this company
+        all_company_roles = await db.role_assignments.find({
+            "company_id": company_id
+        }).to_list(None)
+        
+        company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
+        
+        if not company_user_ids:
+            return EmployeeListResponse(users=[], total=0, has_more=False)
+        
+        # Build filter query - MUST restrict to company users only
+        filter_query = {"id": {"$in": company_user_ids}}
+        
+        if type == "corporate":
+            # Get users with corporate roles in THIS company
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"},
+                "is_active": True
+            }).to_list(None)
+            
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            filter_query["id"] = {"$in": corporate_user_ids}
+        elif type == "individual":
+            # Get users without corporate roles in THIS company
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"}
+            }).to_list(None)
+            
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
+            filter_query["id"] = {"$in": individual_user_ids}
+        
+        if status:
+            filter_query["is_active"] = status == "active"
+        
+        if search:
+            search_conditions = [
+                {"full_name": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}}
+            ]
+            filter_query = {"$and": [{"id": {"$in": filter_query["id"]["$in"]}}, {"$or": search_conditions}]}
+            if status:
+                filter_query["$and"].append({"is_active": status == "active"})
+        
+        # Get users
+        users = await db.users.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(users) > limit
+        if has_more:
+            users = users[:-1]
+        
+        # Get role information for each user
+        result_users = []
+        for user in users:
+            user_role = await db.role_assignments.find_one({
+                "user_id": user["id"],
+                "company_id": company_id,
+                "is_active": True
+            })
+            
+            result_users.append({
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"],
+                "email": user.get("email"),
+                "role": user_role["role"] if user_role else "individual",
+                "is_active": user["is_active"],
+                "created_at": user["created_at"].isoformat(),
+                "last_login_at": user.get("last_login_at").isoformat() if user.get("last_login_at") else None
+            })
+        
+        return EmployeeListResponse(
+            users=result_users,
+            total=len(result_users),
+            has_more=has_more
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier employees error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi çalışanları alınamadı"
+        )
+
 # ===== PARTNERSHIP APIs (FOR CATERING MANAGEMENT) =====
 @api_router.get("/corporate/{company_id}/partnerships")
 async def get_corporate_partnerships(
