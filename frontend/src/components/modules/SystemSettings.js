@@ -129,7 +129,7 @@ const SystemSettings = ({ companyId, userRole, companyType = 'corporate' }) => {
 
   const handleExportAuditLogs = async () => {
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/audit-logs/export`, {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/audit-logs/export`, {
         params: auditFilters,
         responseType: 'blob'
       });
