@@ -174,7 +174,12 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
       start_time: shift.start_time,
       end_time: shift.end_time,
       days: shift.days,
-      timezone: shift.timezone
+      timezone: shift.timezone || 'Europe/Istanbul',
+      description: shift.description || '',
+      is_active: shift.is_active !== false,
+      max_employees: shift.max_employees || null,
+      break_duration: shift.break_duration || 60,
+      is_overtime_allowed: shift.is_overtime_allowed || false
     });
     setShowEditDialog(true);
   };
