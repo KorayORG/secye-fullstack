@@ -141,24 +141,27 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
 
   const handleCreateShift = async () => {
     if (!shiftForm.title || !shiftForm.start_time || !shiftForm.end_time || shiftForm.days.length === 0) {
-      setError('Lütfen tüm alanları doldurun');
+      setError('Lütfen tüm zorunlu alanları doldurun');
       return;
     }
-    
+
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      await axios.post(`${API}/corporate/${companyId}/shifts`, shiftForm);
+      await axios.post(`${API}/${companyType}/${companyId}/shifts`, {
+        ...shiftForm,
+        max_employees: shiftForm.max_employees ? parseInt(shiftForm.max_employees) : null
+      });
       
       setSuccess('Vardiya başarıyla oluşturuldu');
       setShowCreateDialog(false);
       resetForm();
       loadShifts();
     } catch (err) {
-      console.error('Shift creation error:', err);
-      setError('Vardiya oluşturma sırasında hata oluştu: ' + (err.response?.data?.detail || err.message));
+      console.error('Create shift error:', err);
+      setError('Vardiya oluşturulurken hata oluştu: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
