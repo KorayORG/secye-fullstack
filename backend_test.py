@@ -2,6 +2,7 @@ import requests
 import sys
 from datetime import datetime
 import json
+import uuid
 
 class SecYeAPITester:
     def __init__(self, base_url="https://corpfood-hub.preview.emergentagent.com"):
@@ -14,6 +15,8 @@ class SecYeAPITester:
         self.corporate_company_id = None
         self.catering_company_id = None
         self.supplier_company_id = None
+        self.created_shift_id = None
+        self.created_user_id = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
