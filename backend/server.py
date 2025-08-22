@@ -395,4 +395,5 @@ app.include_router(api_router)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-    await redis_client.close()
+    if redis_available and redis_client:
+        await redis_client.close()
