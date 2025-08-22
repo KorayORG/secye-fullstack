@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Alert, AlertDescription } from '../ui/alert';
+import { Checkbox } from '../ui/checkbox';
 import { 
   Clock, 
   Plus, 
@@ -14,21 +16,35 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
-  Calendar
+  Calendar,
+  Users,
+  Search,
+  Filter,
+  Copy,
+  Settings,
+  BarChart3
 } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = import.meta.env.VITE_API_URL || process.env.REACT_APP_BACKEND_URL;
 
-const ShiftManagement = ({ companyId, userRole }) => {
+const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => {
   const [loading, setLoading] = useState(true);
   const [shifts, setShifts] = useState([]);
+  const [filteredShifts, setFilteredShifts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [shiftStats, setShiftStats] = useState({
+    total_shifts: 0,
+    active_shifts: 0,
+    total_employees_assigned: 0
+  });
   
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showStatsDialog, setShowStatsDialog] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   
   // Form states
@@ -37,7 +53,12 @@ const ShiftManagement = ({ companyId, userRole }) => {
     start_time: '09:00',
     end_time: '17:00',
     days: [],
-    timezone: 'Europe/Istanbul'
+    timezone: 'Europe/Istanbul',
+    description: '',
+    is_active: true,
+    max_employees: null,
+    break_duration: 60,
+    is_overtime_allowed: false
   });
 
   const dayNames = {
