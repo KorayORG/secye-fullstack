@@ -310,6 +310,7 @@ const SupplierPanel = () => {
             <EmployeeManagement 
               companyId={getCompanyIdFromPath()} 
               userRole={userProfile?.role}
+              companyType="supplier"
             />
           </TabsContent>
 
