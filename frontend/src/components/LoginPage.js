@@ -452,7 +452,12 @@ const LoginPage = () => {
                               key={company.id}
                               className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                               onClick={() => {
-                                setRegisterData(prev => ({...prev, companyId: company.id}));
+                                console.log('Register - Company selected:', company); // Debug log
+                                setRegisterData(prev => {
+                                  const updated = {...prev, companyId: company.id};
+                                  console.log('Register - Updated registerData:', updated); // Debug log
+                                  return updated;
+                                });
                                 setCompanySearch(company.name);
                                 setCompanies([]);
                               }}
