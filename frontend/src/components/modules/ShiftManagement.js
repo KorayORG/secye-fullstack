@@ -546,7 +546,7 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
                   <button
                     key={day}
                     type="button"
-                    onClick={() => handleDayToggle(parseInt(day))}
+                    onClick={() => toggleDay(parseInt(day))}
                     className={`p-2 text-xs rounded border ${
                       shiftForm.days.includes(parseInt(day))
                         ? 'bg-orange-500 text-white border-orange-500'
