@@ -72,7 +72,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
     setError('');
     
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/messages`, {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/messages`, {
         params: {
           user_id: userId,
           type: activeTab,
