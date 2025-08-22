@@ -31,8 +31,14 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Redis connection
-redis_client = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'))
+# Redis connection (optional for development)
+try:
+    redis_client = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'))
+    redis_available = True
+except Exception:
+    redis_client = None
+    redis_available = False
+    print("Warning: Redis not available, using in-memory cache")
 
 # Create the main app
 app = FastAPI(title="Seç Ye API", version="1.0.0")
