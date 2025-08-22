@@ -877,8 +877,8 @@ def main():
         print(f"   ✅ Employee Management: {'PASSED' if employee_success else 'FAILED'}")
         print(f"   ✅ Shift Management: {'PASSED' if shift_success else 'FAILED'}")
         print(f"   ✅ System Settings: {'PASSED' if settings_success else 'FAILED'}")
-        print(f"   ⚠️  Mail/Messaging: {'EXPECTED FAIL' if mail_success else 'FAILED'} (Not implemented)")
-        print(f"   ✅ Catering Search: {'PASSED' if catering_success else 'FAILED'}")
+        print(f"   ✅ Mail/Messaging: {'PASSED' if mail_success else 'FAILED'}")
+        print(f"   ✅ Partnership APIs: {'PASSED' if partnership_success else 'FAILED'}")
         print(f"   ✅ Error Handling: {'PASSED' if error_success else 'FAILED'}")
     
     if tester.tests_passed == tester.tests_run:
