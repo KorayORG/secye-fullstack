@@ -357,6 +357,275 @@ async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(sec
 async def root():
     return {"message": "Seç Ye API - Multi-tenant Yemek Seçim Platformu"}
 
+@api_router.get("/auth/verify")
+async def verify_auth(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify authentication token and return user info"""
+    try:
+        # For now, we'll implement a simple token verification
+        # In a real implementation, this would verify JWT tokens
+        token = credentials.credentials
+        
+        # Decode the token (this is a placeholder implementation)
+        # In reality, you'd verify JWT or session tokens
+        
+        return {"message": "Token verification endpoint - implementation needed"}
+        
+    except Exception as e:
+        logger.error(f"Auth verification error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Geçersiz token"
+        )
+
+@api_router.get("/corporate/{company_id}/dashboard")
+async def get_corporate_dashboard(company_id: str):
+    """Get corporate dashboard statistics"""
+    try:
+        # Verify company exists and is corporate type
+        company = await db.companies.find_one({
+            "id": company_id,
+            "type": "corporate", 
+            "is_active": True
+        })
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Count individual users (users without corporate roles in this company)
+        all_roles = await db.role_assignments.find({
+            "company_id": company_id,
+            "is_active": True
+        }).to_list(None)
+        
+        corporate_user_ids = set()
+        for role in all_roles:
+            if role['role'].startswith('corporate') and not role['role'].endswith('1'):
+                corporate_user_ids.add(role['user_id'])
+        
+        # Count corporate users (users with corporate management roles)
+        corporate_users = len(corporate_user_ids)
+        
+        # Count individual users (estimate - we'll improve this with proper individual user tracking)
+        total_users = await db.users.count_documents({"is_active": True})
+        individual_users = max(0, total_users - corporate_users)
+        
+        # Count total preferences (we'll add this when we implement menu selection)
+        total_preferences = 0  # Placeholder for now
+        
+        # Count active shifts
+        active_shifts = await db.shifts.count_documents({"company_id": company_id}) if 'shifts' in await db.list_collection_names() else 0
+        
+        # Get recent activities from audit logs
+        recent_logs = await db.audit_logs.find({
+            "company_id": company_id
+        }).sort("created_at", -1).limit(10).to_list(None)
+        
+        recent_activities = []
+        for log in recent_logs:
+            recent_activities.append({
+                "type": log["type"],
+                "description": get_activity_description(log),
+                "timestamp": log["created_at"].isoformat(),
+                "meta": log.get("meta", {})
+            })
+        
+        return CorporateDashboardStats(
+            individual_users=individual_users,
+            corporate_users=corporate_users,
+            total_preferences=total_preferences,
+            active_shifts=active_shifts,
+            recent_activities=recent_activities
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Corporate dashboard error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Dashboard verileri alınamadı"
+        )
+
+@api_router.get("/catering/{company_id}/dashboard")
+async def get_catering_dashboard(company_id: str):
+    """Get catering dashboard statistics"""
+    try:
+        # Verify company exists and is catering type
+        company = await db.companies.find_one({
+            "id": company_id,
+            "type": "catering",
+            "is_active": True
+        })
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Get rating from company data
+        rating = company.get("ratings", {}).get("avg", 0.0)
+        
+        # Count served individuals (estimate based on partner corporates)
+        partner_corporates = 0  # We'll implement this when we add catering-corporate relationships
+        served_individuals = 0  # Placeholder
+        
+        # Count total preferences
+        total_preferences = 0  # Placeholder
+        
+        # Get recent activities
+        recent_logs = await db.audit_logs.find({
+            "company_id": company_id
+        }).sort("created_at", -1).limit(10).to_list(None)
+        
+        recent_activities = []
+        for log in recent_logs:
+            recent_activities.append({
+                "type": log["type"],
+                "description": get_activity_description(log),
+                "timestamp": log["created_at"].isoformat(),
+                "meta": log.get("meta", {})
+            })
+        
+        return CateringDashboardStats(
+            rating=rating,
+            served_individuals=served_individuals,
+            total_preferences=total_preferences,
+            partner_corporates=partner_corporates,
+            recent_activities=recent_activities
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Catering dashboard error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Dashboard verileri alınamadı"
+        )
+
+@api_router.get("/supplier/{company_id}/dashboard")
+async def get_supplier_dashboard(company_id: str):
+    """Get supplier dashboard statistics"""
+    try:
+        # Verify company exists and is supplier type
+        company = await db.companies.find_one({
+            "id": company_id,
+            "type": "supplier",
+            "is_active": True
+        })
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Count orders
+        total_orders = await db.supplier_orders.count_documents({
+            "supplier_id": company_id
+        }) if 'supplier_orders' in await db.list_collection_names() else 0
+        
+        # Count products
+        product_variety = await db.supplier_products.count_documents({
+            "supplier_id": company_id
+        }) if 'supplier_products' in await db.list_collection_names() else 0
+        
+        # Count recent orders (last 30 days)
+        from datetime import timedelta
+        recent_date = datetime.now(timezone.utc) - timedelta(days=30)
+        recent_orders = await db.supplier_orders.count_documents({
+            "supplier_id": company_id,
+            "created_at": {"$gte": recent_date}
+        }) if 'supplier_orders' in await db.list_collection_names() else 0
+        
+        # Count partner caterings
+        partner_caterings = 0  # Placeholder - we'll implement this when we add supplier-catering relationships
+        
+        # Get recent activities
+        recent_logs = await db.audit_logs.find({
+            "company_id": company_id
+        }).sort("created_at", -1).limit(10).to_list(None)
+        
+        recent_activities = []
+        for log in recent_logs:
+            recent_activities.append({
+                "type": log["type"],
+                "description": get_activity_description(log),
+                "timestamp": log["created_at"].isoformat(),
+                "meta": log.get("meta", {})
+            })
+        
+        return SupplierDashboardStats(
+            total_orders=total_orders,
+            product_variety=product_variety,
+            recent_orders=recent_orders,
+            partner_caterings=partner_caterings,
+            recent_activities=recent_activities
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Supplier dashboard error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Dashboard verileri alınamadı"
+        )
+
+@api_router.get("/user/profile")
+async def get_user_profile(user_id: str, company_id: str):
+    """Get user profile with company and role information"""
+    try:
+        # Get user
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Get company
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Get user role in this company
+        role_assignment = await db.role_assignments.find_one({
+            "user_id": user_id,
+            "company_id": company_id,
+            "is_active": True
+        })
+        
+        user_role = role_assignment['role'] if role_assignment else 'individual'
+        
+        return UserProfile(
+            id=user["id"],
+            full_name=user["full_name"],
+            phone=user["phone"],
+            email=user.get("email"),
+            company={
+                "id": company["id"],
+                "name": company["name"],
+                "type": company["type"],
+                "slug": company["slug"]
+            },
+            role=user_role,
+            is_active=user["is_active"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"User profile error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Kullanıcı profili alınamadı"
+        )
+
+def get_activity_description(log: Dict[str, Any]) -> str:
+    """Generate human-readable activity description from audit log"""
+    activity_descriptions = {
+        "CORPORATE_APPLICATION_SUBMITTED": "Yeni kurumsal hesap başvurusu yapıldı",
+        "APPLICATION_APPROVED": "Başvuru onaylandı",
+        "APPLICATION_REJECTED": "Başvuru reddedildi",
+        "COMPANY_UPDATED": "Şirket bilgileri güncellendi",
+        "USER_CREATED": "Yeni kullanıcı oluşturuldu",
+        "ROLE_ASSIGNED": "Rol ataması yapıldı",
+        "SHIFT_CREATED": "Yeni vardiya oluşturuldu",
+        "MENU_UPLOADED": "Yeni menü yüklendi"
+    }
+    
+    return activity_descriptions.get(log["type"], f"Sistem aktivitesi: {log['type']}")
+
 @api_router.get("/companies/search")
 async def search_companies(
     type: CompanyType,
