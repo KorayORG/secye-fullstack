@@ -659,7 +659,7 @@ class SecYeAPITester:
         return all([success1, success2, success3, success4])
 
 def main():
-    print("🚀 Starting Seç Ye API Tests - Corporate Application Focus")
+    print("🚀 Starting Seç Ye API Tests - Corporate Panel Focus")
     print("=" * 60)
     
     # Setup
@@ -669,42 +669,83 @@ def main():
     print("\n📋 Test 1: API Health Check")
     tester.test_health_check()
 
-    # Test 2: Company Search
+    # Test 2: Company Search (to get corporate company ID)
     print("\n📋 Test 2: Company Search")
-    tester.test_company_search("corporate", "A-Tech")
+    tester.test_company_search("corporate", "")  # Get any corporate company
+    tester.test_company_search("catering", "")   # Get catering companies for partnership tests
+    tester.test_company_search("supplier", "")   # Get supplier companies
 
-    # Test 3: Corporate Application - Existing Company
-    print("\n📋 Test 3: Corporate Application - Existing Company")
+    # ===== CORPORATE PANEL API TESTS =====
+    if tester.corporate_company_id:
+        print(f"\n🏢 Using Corporate Company ID: {tester.corporate_company_id}")
+        
+        # Test 3: Employee Management APIs
+        print("\n📋 Test 3: Employee Management APIs")
+        employee_success = tester.test_employee_management_apis()
+        
+        # Test 4: Shift Management APIs
+        print("\n📋 Test 4: Shift Management APIs")
+        shift_success = tester.test_shift_management_apis()
+        
+        # Test 5: System Settings APIs
+        print("\n📋 Test 5: System Settings APIs")
+        settings_success = tester.test_system_settings_apis()
+        
+        # Test 6: Mail/Messaging APIs (Expected to fail)
+        print("\n📋 Test 6: Mail/Messaging APIs")
+        mail_success = tester.test_mail_messaging_apis()
+        
+        # Test 7: Catering Management APIs
+        print("\n📋 Test 7: Catering Management APIs")
+        catering_success = tester.test_catering_management_apis()
+        
+        # Test 8: Error Handling and Edge Cases
+        print("\n📋 Test 8: Error Handling and Edge Cases")
+        error_success = tester.test_error_handling_and_edge_cases()
+        
+    else:
+        print("⚠️  No corporate company found - skipping corporate panel tests")
+        employee_success = shift_success = settings_success = mail_success = catering_success = error_success = False
+
+    # ===== LEGACY TESTS (for backward compatibility) =====
+    print("\n📋 Legacy Tests: Corporate Application Flow")
+    
+    # Test 9: Corporate Application - Existing Company
+    print("\n📋 Test 9: Corporate Application - Existing Company")
     tester.test_corporate_application_existing()
 
-    # Test 4: Corporate Application - New Company
-    print("\n📋 Test 4: Corporate Application - New Company")
+    # Test 10: Corporate Application - New Company
+    print("\n📋 Test 10: Corporate Application - New Company")
     tester.test_corporate_application_new()
 
-    # Test 5: Corporate Application Validation
-    print("\n📋 Test 5: Corporate Application Validation")
+    # Test 11: Corporate Application Validation
+    print("\n📋 Test 11: Corporate Application Validation")
     tester.test_corporate_application_validation()
 
-    # Test 6: Individual Registration
-    print("\n📋 Test 6: Individual Registration")
+    # Test 12: Individual Registration
+    print("\n📋 Test 12: Individual Registration")
     tester.test_individual_registration()
 
-    # Test 7: Login (if company was found)
-    print("\n📋 Test 7: Corporate Login")
+    # Test 13: Login (if company was found)
+    print("\n📋 Test 13: Corporate Login")
     if tester.company_id:
         tester.test_login()
     else:
         print("⚠️  Skipping login test - no company found")
 
-    # Additional company search tests
-    print("\n📋 Test 8: Additional Company Searches")
-    tester.test_company_search("corporate", "")  # Empty query
-    tester.test_company_search("catering", "")   # Different type
-    tester.test_company_search("supplier", "")   # Different type
-
     # Print results
     print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
+    
+    # Summary of corporate panel tests
+    if tester.corporate_company_id:
+        print("\n🏢 Corporate Panel API Test Summary:")
+        print(f"   ✅ Employee Management: {'PASSED' if employee_success else 'FAILED'}")
+        print(f"   ✅ Shift Management: {'PASSED' if shift_success else 'FAILED'}")
+        print(f"   ✅ System Settings: {'PASSED' if settings_success else 'FAILED'}")
+        print(f"   ⚠️  Mail/Messaging: {'EXPECTED FAIL' if mail_success else 'FAILED'} (Not implemented)")
+        print(f"   ✅ Catering Search: {'PASSED' if catering_success else 'FAILED'}")
+        print(f"   ✅ Error Handling: {'PASSED' if error_success else 'FAILED'}")
     
     if tester.tests_passed == tester.tests_run:
         print("🎉 All tests passed!")
