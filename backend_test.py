@@ -10,6 +10,10 @@ class SecYeAPITester:
         self.tests_run = 0
         self.tests_passed = 0
         self.company_id = None
+        self.user_id = None
+        self.corporate_company_id = None
+        self.catering_company_id = None
+        self.supplier_company_id = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
