@@ -92,7 +92,7 @@ const SystemSettings = ({ companyId, userRole, companyType = 'corporate' }) => {
     setAuditLoading(true);
     
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/audit-logs`, {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/audit-logs`, {
         params: auditFilters
       });
       
