@@ -61,6 +61,11 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     is_active: true
   });
   
+  const [applicationDecision, setApplicationDecision] = useState({
+    status: '',
+    notes: ''
+  });
+  
   // Bulk upload states
   const [bulkUploadFile, setBulkUploadFile] = useState(null);
   const [bulkUploadLoading, setBulkUploadLoading] = useState(false);
