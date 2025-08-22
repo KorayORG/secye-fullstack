@@ -317,6 +317,7 @@ const CateringPanel = () => {
             <SystemSettings 
               companyId={getCompanyIdFromPath()} 
               userRole={userProfile?.role}
+              companyType="catering"
             />
           </TabsContent>
 
