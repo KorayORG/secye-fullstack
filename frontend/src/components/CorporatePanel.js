@@ -441,17 +441,12 @@ const CorporatePanel = () => {
             )}
           </TabsContent>
 
-          {/* Other tabs - placeholder content for now */}
+          {/* Employee Management Tab */}
           <TabsContent value="employees">
-            <Card>
-              <CardHeader>
-                <CardTitle>Çalışan Yönetimi</CardTitle>
-                <CardDescription>Bireysel ve kurumsal hesapları yönetin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Çalışan yönetimi modülü geliştiriliyor...</p>
-              </CardContent>
-            </Card>
+            <EmployeeManagement 
+              companyId={getCompanyIdFromPath()} 
+              userRole={userProfile?.role}
+            />
           </TabsContent>
 
           <TabsContent value="shifts">
