@@ -34,7 +34,7 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const MailSystem = ({ companyId, userId, userRole }) => {
+const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) => {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [selectedMessage, setSelectedMessage] = useState(null);
