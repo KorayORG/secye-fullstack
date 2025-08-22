@@ -104,6 +104,21 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     }
   };
 
+  const loadApplications = async () => {
+    try {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/applications`, {
+        params: {
+          limit: 100
+        }
+      });
+      
+      setApplications(response.data.applications || []);
+    } catch (err) {
+      console.error('Applications loading error:', err);
+      // Don't set main error for applications as it's a secondary feature
+    }
+  };
+
   const filterEmployees = () => {
     let filtered = employees;
 
