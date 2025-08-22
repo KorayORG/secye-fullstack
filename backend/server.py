@@ -170,6 +170,58 @@ class Offer(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class Application(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str
+    applicant_full_name: str
+    applicant_phone: str
+    applicant_email: Optional[str] = None
+    password_hash: str
+    status: Literal['pending', 'approved', 'rejected'] = 'pending'
+    notes: Optional[str] = None
+    approved_by: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MenuFrame(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    corporate_id: str
+    catering_id: str
+    shift_id: str
+    week_start: str  # YYYY-MM-DD format
+    menu_data: Dict[str, Dict[str, Any]]  # {day: {option1: {...}, option2: {...}}}
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MenuChoice(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    menu_frame_id: str
+    day: str  # YYYY-MM-DD format
+    choice: int  # 1 or 2 (option1 or option2)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Rating(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    catering_id: str
+    menu_item_name: str
+    rating: int  # 1-5
+    day_consumed: str  # YYYY-MM-DD format
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Suggestion(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    corporate_id: str
+    title: str
+    content: str
+    likes: int = 0
+    dislikes: int = 0
+    is_anonymous: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Request/Response models
 class LoginRequest(BaseModel):
     phone: str
