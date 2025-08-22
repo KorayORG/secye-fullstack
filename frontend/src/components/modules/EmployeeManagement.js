@@ -197,7 +197,7 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
 
   const downloadExcelTemplate = async () => {
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/employees/excel-template`, {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/employees/excel-template`, {
         responseType: 'blob'
       });
       
