@@ -315,11 +315,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Employee Management Component"
-    - "Shift Management Component"
-    - "Catering Companies Component"
-    - "System Settings Component"
-    - "Mail System Component"
+    - "Enhanced Employee Management with Applications"
+    - "Advanced Shift Management"
+    - "Comprehensive Catering Companies Management"
+    - "Enhanced System Settings with Audit Logs"
+    - "Internal Mail System"
+    - "Catering Panel Modules"
+    - "Supplier Panel Modules"
+    - "Individual User Interface"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
