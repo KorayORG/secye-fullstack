@@ -352,6 +352,74 @@ async def login(request: LoginRequest, response: Response):
             detail="Giriş işlemi sırasında hata oluştu"
         )
 
+@api_router.post("/auth/register/corporate/application", response_model=ApplicationResponse)
+async def register_corporate_application(request: CorporateApplicationRequest):
+    """Submit corporate account application"""
+    try:
+        # Check if phone already exists
+        existing_user = await db.users.find_one({"phone": request.applicant["phone"]})
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bu telefon numarası zaten kayıtlı"
+            )
+        
+        # Hash password
+        password_hash = ph.hash(request.password)
+        
+        # Create application document
+        application = {
+            "id": str(uuid.uuid4()),
+            "target": request.target,
+            "applicant": {
+                **request.applicant,
+                "password_hash": password_hash
+            },
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # If it's an existing company application, verify company exists
+        if request.mode == 'existing':
+            company = await db.companies.find_one({
+                "id": request.target["company_id"],
+                "is_active": True
+            })
+            if not company:
+                raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Save application
+        await db.corporate_applications.insert_one(application)
+        
+        # Log the application for audit
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "CORPORATE_APPLICATION_SUBMITTED",
+            "meta": {
+                "application_id": application["id"],
+                "mode": request.mode,
+                "applicant_phone": request.applicant["phone"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return ApplicationResponse(
+            success=True,
+            message="Başvurunuz başarıyla alındı. İnceleme sonrası size bilgi verilecektir.",
+            application_id=application["id"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Corporate application error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Başvuru işlemi sırasında hata oluştu"
+        )
+
 @api_router.post("/auth/register/individual")
 async def register_individual(request: RegisterIndividualRequest):
     """Register individual user"""
