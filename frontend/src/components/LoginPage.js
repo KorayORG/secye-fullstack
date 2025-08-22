@@ -393,6 +393,243 @@ const LoginPage = () => {
               </TabsContent>
             </Tabs>
 
+            {/* Corporate Application Form - Hidden Tab */}
+            {activeTab === 'corp-register' && (
+              <div className="mt-4 space-y-4">
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-semibold">Kurumsal Hesap Başvurusu</h3>
+                  <p className="text-sm text-gray-600">Var olan şirkette hesap veya yeni şirket başvurusu</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="applicationMode">Başvuru Tipi</Label>
+                    <Select 
+                      value={registerData.applicationMode || ''} 
+                      onValueChange={(value) => setRegisterData(prev => ({...prev, applicationMode: value, companyId: '', companyType: ''}))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Başvuru tipini seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="existing">Var olan şirkette hesap başvurusu</SelectItem>
+                        <SelectItem value="new">Yeni şirket başvurusu</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {registerData.applicationMode === 'existing' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="appCompanyType">Şirket Tipi</Label>
+                        <Select 
+                          value={registerData.companyType} 
+                          onValueChange={(value) => setRegisterData(prev => ({...prev, companyType: value, companyId: ''}))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Şirket tipini seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="corporate">Firma</SelectItem>
+                            <SelectItem value="catering">Catering</SelectItem>
+                            <SelectItem value="supplier">Tedarikçi</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {registerData.companyType && (
+                        <div className="space-y-2">
+                          <Label htmlFor="appCompany">Şirket</Label>
+                          <div className="relative">
+                            <Input
+                              placeholder="Şirket adı yazın..."
+                              value={companySearch}
+                              onChange={(e) => setCompanySearch(e.target.value)}
+                              className="pr-8"
+                            />
+                            {searchingCompanies && (
+                              <Loader2 className="w-4 h-4 animate-spin absolute right-2 top-1/2 transform -translate-y-1/2" />
+                            )}
+                          </div>
+                          {companies.length > 0 && (
+                            <div className="border rounded-md max-h-40 overflow-y-auto">
+                              {companies.map((company) => (
+                                <div
+                                  key={company.id}
+                                  className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                                  onClick={() => {
+                                    console.log('Corporate App - Company selected:', company);
+                                    setRegisterData(prev => {
+                                      const updated = {...prev, companyId: company.id};
+                                      console.log('Corporate App - Updated registerData:', updated);
+                                      return updated;
+                                    });
+                                    setCompanySearch(company.name);
+                                    setCompanies([]);
+                                  }}
+                                >
+                                  <div className="font-medium">{company.name}</div>
+                                  <div className="text-sm text-gray-500">{company.slug}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {registerData.applicationMode === 'new' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="newCompanyType">Şirket Tipi</Label>
+                        <Select 
+                          value={registerData.companyType} 
+                          onValueChange={(value) => setRegisterData(prev => ({...prev, companyType: value}))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Şirket tipini seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="corporate">Firma</SelectItem>
+                            <SelectItem value="catering">Catering</SelectItem>
+                            <SelectItem value="supplier">Tedarikçi</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="newCompanyName">Şirket Adı</Label>
+                        <Input
+                          id="newCompanyName"
+                          type="text"
+                          placeholder="Şirket adını girin"
+                          value={registerData.newCompanyName || ''}
+                          onChange={(e) => setRegisterData(prev => ({...prev, newCompanyName: e.target.value}))}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="newCompanyAddress">Şirket Adresi</Label>
+                        <Input
+                          id="newCompanyAddress"
+                          type="text"
+                          placeholder="Şirket adresi (örn: Levent, İstanbul)"
+                          value={registerData.newCompanyAddress || ''}
+                          onChange={(e) => setRegisterData(prev => ({...prev, newCompanyAddress: e.target.value}))}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="newCompanyPhone">Şirket Telefonu</Label>
+                        <Input
+                          id="newCompanyPhone"
+                          type="tel"
+                          placeholder="+90 212 999 0000"
+                          value={registerData.newCompanyPhone || ''}
+                          onChange={(e) => setRegisterData(prev => ({...prev, newCompanyPhone: e.target.value}))}
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="appFullName">Yetkili Ad Soyad</Label>
+                    <Input
+                      id="appFullName"
+                      type="text"
+                      placeholder="Adınız ve soyadınız"
+                      value={registerData.fullName}
+                      onChange={(e) => setRegisterData(prev => ({...prev, fullName: e.target.value}))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="appPhone">Yetkili Telefon</Label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input
+                        id="appPhone"
+                        type="tel"
+                        placeholder="+90 555 123 4567"
+                        value={registerData.phone}
+                        onChange={(e) => setRegisterData(prev => ({...prev, phone: e.target.value}))}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="appEmail">E-posta</Label>
+                    <Input
+                      id="appEmail"
+                      type="email"
+                      placeholder="email@domain.com"
+                      value={registerData.email || ''}
+                      onChange={(e) => setRegisterData(prev => ({...prev, email: e.target.value}))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="appPassword">Şifre</Label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input
+                        id="appPassword"
+                        type="password"
+                        value={registerData.password}
+                        onChange={(e) => setRegisterData(prev => ({...prev, password: e.target.value}))}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="appConfirmPassword">Şifre Tekrar</Label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input
+                        id="appConfirmPassword"
+                        type="password"
+                        value={registerData.confirmPassword}
+                        onChange={(e) => setRegisterData(prev => ({...prev, confirmPassword: e.target.value}))}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleCorporateApplication}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                    disabled={loading || !isApplicationFormValid()}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Başvuru Gönder
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div className="text-center">
+                  <Button 
+                    variant="link" 
+                    onClick={() => setActiveTab('corporate')}
+                    className="text-orange-600 hover:text-orange-700"
+                  >
+                    Giriş yapmak için tıklayın
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Register Form - Hidden Tab */}
             {activeTab === 'register' && (
               <div className="mt-4 space-y-4">
