@@ -359,6 +359,7 @@ const CateringPanel = () => {
               companyId={getCompanyIdFromPath()} 
               userId={getUserIdFromPath()}
               userRole={userProfile?.role}
+              companyType="catering"
             />
           </TabsContent>
         </Tabs>
