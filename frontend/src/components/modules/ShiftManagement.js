@@ -234,6 +234,22 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
     }
   };
 
+  const handleDuplicateShift = (shift) => {
+    setShiftForm({
+      title: shift.title + ' (Kopya)',
+      start_time: shift.start_time,
+      end_time: shift.end_time,
+      days: [...shift.days],
+      timezone: shift.timezone || 'Europe/Istanbul',
+      description: shift.description || '',
+      is_active: true,
+      max_employees: shift.max_employees || null,
+      break_duration: shift.break_duration || 60,
+      is_overtime_allowed: shift.is_overtime_allowed || false
+    });
+    setShowCreateDialog(true);
+  };
+
   const resetForm = () => {
     setShiftForm({
       title: '',
