@@ -3886,6 +3886,449 @@ async def get_company_details(
             detail="Şirket detayları alınamadı"
         )
 
+# ===== APPLICATION MANAGEMENT APIs =====
+@api_router.get("/{company_type}/{company_id}/applications")
+async def get_applications(
+    company_type: CompanyType,
+    company_id: str,
+    status: str = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get applications for a company"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": company_type, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query
+        filter_query = {"company_id": company_id}
+        if status:
+            filter_query["status"] = status
+        
+        # Get applications
+        applications = await db.applications.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(applications) > limit
+        if has_more:
+            applications = applications[:-1]
+        
+        # Format applications
+        result_applications = []
+        for app in applications:
+            result_applications.append({
+                "id": app["id"],
+                "applicant_full_name": app["applicant_full_name"],
+                "applicant_phone": app["applicant_phone"],
+                "applicant_email": app.get("applicant_email"),
+                "status": app["status"],
+                "notes": app.get("notes"),
+                "approved_by": app.get("approved_by"),
+                "created_at": app["created_at"].isoformat(),
+                "updated_at": app["updated_at"].isoformat()
+            })
+        
+        return {
+            "applications": result_applications,
+            "total": len(result_applications),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get applications error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Başvurular alınamadı"
+        )
+
+@api_router.post("/{company_type}/{company_id}/applications")
+async def create_application(
+    company_type: CompanyType,
+    company_id: str,
+    request: ApplicationCreateRequest
+):
+    """Create a new application"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": company_type, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Check if phone already exists
+        existing_user = await db.users.find_one({"phone": request.phone})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Bu telefon numarası ile zaten kayıt var")
+        
+        # Check if there's already a pending application
+        existing_app = await db.applications.find_one({
+            "company_id": company_id,
+            "applicant_phone": request.phone,
+            "status": "pending"
+        })
+        if existing_app:
+            raise HTTPException(status_code=400, detail="Bu telefon numarası ile zaten bekleyen başvuru var")
+        
+        # Hash password
+        password_hash = ph.hash(request.password)
+        
+        # Create application
+        application = {
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "applicant_full_name": request.full_name,
+            "applicant_phone": request.phone,
+            "applicant_email": request.email,
+            "password_hash": password_hash,
+            "status": "pending",
+            "notes": None,
+            "approved_by": None,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.applications.insert_one(application)
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "type": "APPLICATION_SUBMITTED",
+            "company_id": company_id,
+            "description": f"Yeni kurumsal hesap başvurusu: {request.full_name}",
+            "meta": {"applicant_phone": request.phone},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Başvuru başarıyla gönderildi", "application_id": application["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create application error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Başvuru oluşturulamadı"
+        )
+
+@api_router.put("/{company_type}/{company_id}/applications/{application_id}")
+async def update_application(
+    company_type: CompanyType,
+    company_id: str,
+    application_id: str,
+    request: ApplicationUpdateRequest
+):
+    """Update application status"""
+    try:
+        # Verify application exists
+        application = await db.applications.find_one({
+            "id": application_id,
+            "company_id": company_id
+        })
+        if not application:
+            raise HTTPException(status_code=404, detail="Başvuru bulunamadı")
+        
+        # Update application
+        update_data = {
+            "status": request.status,
+            "notes": request.notes,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.applications.update_one(
+            {"id": application_id},
+            {"$set": update_data}
+        )
+        
+        # If approved, create user and role assignment
+        if request.status == "approved":
+            # Create user
+            user = {
+                "id": str(uuid.uuid4()),
+                "full_name": application["applicant_full_name"],
+                "phone": application["applicant_phone"],
+                "email": application.get("applicant_email"),
+                "password_hash": application["password_hash"],
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            
+            await db.users.insert_one(user)
+            
+            # Create role assignment with level 1 permissions
+            role_name = f"{company_type}1"  # corporate1, catering1, or supplier1
+            
+            role_assignment = {
+                "id": str(uuid.uuid4()),
+                "user_id": user["id"],
+                "company_id": company_id,
+                "role": role_name,
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            
+            await db.role_assignments.insert_one(role_assignment)
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "type": "APPLICATION_UPDATED",
+            "company_id": company_id,
+            "description": f"Başvuru {request.status}: {application['applicant_full_name']}",
+            "meta": {"application_id": application_id, "status": request.status},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Başvuru durumu güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update application error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Başvuru güncellenemedi"
+        )
+
+# ===== MENU MANAGEMENT APIs =====
+@api_router.get("/catering/{company_id}/menus")
+async def get_catering_menus(
+    company_id: str,
+    corporate_id: str = None,
+    week_start: str = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get menus for a catering company"""
+    try:
+        # Build filter query
+        filter_query = {"catering_id": company_id}
+        
+        if corporate_id:
+            filter_query["corporate_id"] = corporate_id
+        
+        if week_start:
+            filter_query["week_start"] = week_start
+        
+        # Get menus
+        menus = await db.menu_frames.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(menus) > limit
+        if has_more:
+            menus = menus[:-1]
+        
+        return {
+            "menus": menus,
+            "total": len(menus),
+            "has_more": has_more
+        }
+        
+    except Exception as e:
+        logger.error(f"Get menus error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Menüler alınamadı"
+        )
+
+@api_router.post("/catering/{company_id}/menus")
+async def create_menu(
+    company_id: str,
+    request: MenuFrameCreateRequest
+):
+    """Create a new menu"""
+    try:
+        # Create menu
+        menu = {
+            "id": str(uuid.uuid4()),
+            "corporate_id": request.catering_id,  # This should be corporate_id from request
+            "catering_id": company_id,
+            "shift_id": request.shift_id,
+            "week_start": request.week_start,
+            "menu_data": request.menu_data,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.menu_frames.insert_one(menu)
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "type": "MENU_CREATED",
+            "company_id": company_id,
+            "description": f"Yeni menü oluşturuldu: {request.week_start}",
+            "meta": {"week_start": request.week_start, "corporate_id": request.catering_id},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Menü başarıyla oluşturuldu", "menu_id": menu["id"]}
+        
+    except Exception as e:
+        logger.error(f"Create menu error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Menü oluşturulamadı"
+        )
+
+# ===== SUPPLIER PRODUCT APIs =====
+@api_router.get("/supplier/{company_id}/products")
+async def get_supplier_products(
+    company_id: str,
+    category: str = None,
+    search: str = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get products for a supplier"""
+    try:
+        # Build filter query
+        filter_query = {"supplier_id": company_id, "is_active": True}
+        
+        if search:
+            filter_query["name"] = {"$regex": search, "$options": "i"}
+        
+        # Get products
+        products = await db.supplier_products.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(products) > limit
+        if has_more:
+            products = products[:-1]
+        
+        return {
+            "products": products,
+            "total": len(products),
+            "has_more": has_more
+        }
+        
+    except Exception as e:
+        logger.error(f"Get products error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürünler alınamadı"
+        )
+
+@api_router.post("/supplier/{company_id}/products")
+async def create_product(
+    company_id: str,
+    request: ProductCreateRequest
+):
+    """Create a new product"""
+    try:
+        # Create product
+        product = {
+            "id": str(uuid.uuid4()),
+            "supplier_id": company_id,
+            "name": request.name,
+            "description": request.description,
+            "unit": request.unit,
+            "unit_price": request.unit_price,
+            "stock": request.stock,
+            "image_url": None,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.supplier_products.insert_one(product)
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "type": "PRODUCT_CREATED",
+            "company_id": company_id,
+            "description": f"Yeni ürün eklendi: {request.name}",
+            "meta": {"product_name": request.name, "unit_price": request.unit_price},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Ürün başarıyla oluşturuldu", "product_id": product["id"]}
+        
+    except Exception as e:
+        logger.error(f"Create product error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürün oluşturulamadı"
+        )
+
+# ===== INDIVIDUAL USER APIs =====
+@api_router.get("/individual/{user_id}/menu-choices")
+async def get_user_menu_choices(
+    user_id: str,
+    corporate_id: str,
+    week_start: str = None
+):
+    """Get user's menu choices"""
+    try:
+        # Build filter query
+        filter_query = {"user_id": user_id}
+        
+        if week_start:
+            # Get menu frames for the week
+            menu_frames = await db.menu_frames.find({
+                "corporate_id": corporate_id,
+                "week_start": week_start
+            }).to_list(None)
+            
+            menu_frame_ids = [mf["id"] for mf in menu_frames]
+            filter_query["menu_frame_id"] = {"$in": menu_frame_ids}
+        
+        # Get choices
+        choices = await db.menu_choices.find(filter_query).sort("created_at", -1).to_list(None)
+        
+        return {"choices": choices}
+        
+    except Exception as e:
+        logger.error(f"Get menu choices error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Menü seçimleri alınamadı"
+        )
+
+@api_router.post("/individual/{user_id}/menu-choices")
+async def create_menu_choice(
+    user_id: str,
+    request: MenuChoiceCreateRequest
+):
+    """Create a menu choice"""
+    try:
+        # Check if choice already exists for this day
+        existing_choice = await db.menu_choices.find_one({
+            "user_id": user_id,
+            "menu_frame_id": request.menu_frame_id,
+            "day": request.day
+        })
+        
+        if existing_choice:
+            # Update existing choice
+            await db.menu_choices.update_one(
+                {"id": existing_choice["id"]},
+                {"$set": {"choice": request.choice}}
+            )
+        else:
+            # Create new choice
+            choice = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "menu_frame_id": request.menu_frame_id,
+                "day": request.day,
+                "choice": request.choice,
+                "created_at": datetime.now(timezone.utc)
+            }
+            await db.menu_choices.insert_one(choice)
+        
+        return {"success": True, "message": "Menü seçimi kaydedildi"}
+        
+    except Exception as e:
+        logger.error(f"Create menu choice error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Menü seçimi kaydedilemedi"
+        )
+
 # Include router
 app.include_router(api_router)
 
