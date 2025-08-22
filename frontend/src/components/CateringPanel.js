@@ -322,36 +322,152 @@ const CateringPanel = () => {
             />
           </TabsContent>
 
-          {/* Corporate Management Tab (Foundation) */}
+          {/* Corporate Management Tab */}
           <TabsContent value="corporates">
-            <Card>
-              <CardHeader>
-                <CardTitle>Firma Yönetimi</CardTitle>
-                <CardDescription>Anlaşmalı firmalarınızı yönetin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Firma yönetimi modülü geliştiriliyor...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Bu modül ile anlaşmalı firmalarınızı görüntüleyebilir, yeni anlaşmalar yapabilir ve mevcut ortaklıkları yönetebilirsiniz.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Anlaşmalı Firmalar</h2>
+                <p className="text-gray-600">Catering hizmeti verdiğiniz firmaları yönetin</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="border-dashed border-2 border-gray-300 hover:border-orange-300 transition-colors cursor-pointer">
+                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                    <Plus className="w-12 h-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Yeni Firma Ekle</h3>
+                    <p className="text-sm text-gray-500">Catering hizmeti vermek istediğiniz firmayı ekleyin</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Örnek Firma A.Ş.</CardTitle>
+                    <CardDescription>Teknoloji Şirketi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Çalışan Sayısı:</span>
+                        <span className="font-medium">150</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Günlük Ortalama:</span>
+                        <span className="font-medium">120 öğün</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Durum:</span>
+                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                      <Button size="sm" className="flex-1">Detay</Button>
+                      <Button size="sm" variant="outline">Düzenle</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Demo İnşaat Ltd.</CardTitle>
+                    <CardDescription>İnşaat Firması</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Çalışan Sayısı:</span>
+                        <span className="font-medium">80</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Günlük Ortalama:</span>
+                        <span className="font-medium">65 öğün</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Durum:</span>
+                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                      <Button size="sm" className="flex-1">Detay</Button>
+                      <Button size="sm" variant="outline">Düzenle</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
-          {/* Supplier Management Tab (Foundation) */}
+          {/* Supplier Management Tab */}
           <TabsContent value="suppliers">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tedarikçi Yönetimi</CardTitle>
-                <CardDescription>Tedarikçilerinizi yönetin ve sipariş verin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Tedarikçi yönetimi modülü geliştiriliyor...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Bu modül ile tedarikçilerinizi görüntüleyebilir, sipariş verebilir ve tedarik süreçlerini yönetebilirsiniz.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Tedarikçi Yönetimi</h2>
+                <p className="text-gray-600">Malzeme tedarikçilerinizi yönetin ve sipariş verin</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="border-dashed border-2 border-gray-300 hover:border-orange-300 transition-colors cursor-pointer">
+                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                    <Plus className="w-12 h-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Yeni Tedarikçi Ekle</h3>
+                    <p className="text-sm text-gray-500">Malzeme tedarikçinizi sisteme ekleyin</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Fresh Market Ltd.</CardTitle>
+                    <CardDescription>Sebze & Meyve Tedarikçisi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Kategori:</span>
+                        <span className="font-medium">Taze Ürünler</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Son Sipariş:</span>
+                        <span className="font-medium">2 gün önce</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Durum:</span>
+                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                      <Button size="sm" className="flex-1">Sipariş Ver</Button>
+                      <Button size="sm" variant="outline">Detay</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Et & Protein A.Ş.</CardTitle>
+                    <CardDescription>Et & Protein Tedarikçisi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Kategori:</span>
+                        <span className="font-medium">Et Ürünleri</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Son Sipariş:</span>
+                        <span className="font-medium">1 hafta önce</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Durum:</span>
+                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                      <Button size="sm" className="flex-1">Sipariş Ver</Button>
+                      <Button size="sm" variant="outline">Detay</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Mail System Tab */}
