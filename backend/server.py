@@ -1451,6 +1451,212 @@ async def get_corporate_settings(company_id: str):
             detail="Ayarlar alınamadı"
         )
 
+@api_router.put("/corporate/{company_id}/settings")
+async def update_corporate_settings(company_id: str, request: CompanyUpdateRequest):
+    """Update corporate system settings"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if request.name:
+            update_data["name"] = request.name
+        
+        if request.phone:
+            update_data["phone"] = request.phone
+            
+        if request.address:
+            update_data["address"] = request.address
+        
+        # Update company
+        await db.companies.update_one(
+            {"id": company_id},
+            {"$set": update_data}
+        )
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "type": "COMPANY_UPDATED",
+            "description": f"Şirket bilgileri güncellendi: {company['name']}",
+            "meta": {"updated_fields": list(update_data.keys())},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Şirket ayarları güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ayarlar güncellenemedi"
+        )
+
+@api_router.get("/catering/{company_id}/settings")
+async def get_catering_settings(company_id: str):
+    """Get catering system settings"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        
+        return {
+            "company": {
+                "id": company["id"],
+                "name": company["name"],
+                "slug": company["slug"],
+                "phone": company.get("phone"),
+                "address": company.get("address"),
+                "is_active": company["is_active"],
+                "created_at": company["created_at"].isoformat(),
+                "updated_at": company["updated_at"].isoformat()
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get catering settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering ayarları alınamadı"
+        )
+
+@api_router.put("/catering/{company_id}/settings")
+async def update_catering_settings(company_id: str, request: CompanyUpdateRequest):
+    """Update catering system settings"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if request.name:
+            update_data["name"] = request.name
+        
+        if request.phone:
+            update_data["phone"] = request.phone
+            
+        if request.address:
+            update_data["address"] = request.address
+        
+        # Update company
+        await db.companies.update_one(
+            {"id": company_id},
+            {"$set": update_data}
+        )
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "type": "COMPANY_UPDATED",
+            "description": f"Catering şirket bilgileri güncellendi: {company['name']}",
+            "meta": {"updated_fields": list(update_data.keys())},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Catering ayarları güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update catering settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering ayarları güncellenemedi"
+        )
+
+@api_router.get("/supplier/{company_id}/settings")
+async def get_supplier_settings(company_id: str):
+    """Get supplier system settings"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
+        
+        return {
+            "company": {
+                "id": company["id"],
+                "name": company["name"],
+                "slug": company["slug"],
+                "phone": company.get("phone"),
+                "address": company.get("address"),
+                "is_active": company["is_active"],
+                "created_at": company["created_at"].isoformat(),
+                "updated_at": company["updated_at"].isoformat()
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi ayarları alınamadı"
+        )
+
+@api_router.put("/supplier/{company_id}/settings")
+async def update_supplier_settings(company_id: str, request: CompanyUpdateRequest):
+    """Update supplier system settings"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if request.name:
+            update_data["name"] = request.name
+        
+        if request.phone:
+            update_data["phone"] = request.phone
+            
+        if request.address:
+            update_data["address"] = request.address
+        
+        # Update company
+        await db.companies.update_one(
+            {"id": company_id},
+            {"$set": update_data}
+        )
+        
+        # Create audit log
+        await db.audit_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "type": "COMPANY_UPDATED",
+            "description": f"Tedarikçi şirket bilgileri güncellendi: {company['name']}",
+            "meta": {"updated_fields": list(update_data.keys())},
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        return {"success": True, "message": "Tedarikçi ayarları güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update supplier settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi ayarları güncellenemedi"
+        )
+
 @api_router.get("/corporate/{company_id}/audit-logs")
 async def get_corporate_audit_logs(
     company_id: str,
