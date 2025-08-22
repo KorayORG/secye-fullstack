@@ -1657,6 +1657,120 @@ async def update_supplier_settings(company_id: str, request: CompanyUpdateReques
             detail="Tedarikçi ayarları güncellenemedi"
         )
 
+@api_router.get("/catering/{company_id}/audit-logs")
+async def get_catering_audit_logs(
+    company_id: str,
+    log_type: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get catering audit logs with filtering"""
+    try:
+        # Build filter query
+        filter_query = {"company_id": company_id}
+        
+        if log_type:
+            filter_query["type"] = log_type
+        
+        if start_date or end_date:
+            date_filter = {}
+            if start_date:
+                date_filter["$gte"] = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            if end_date:
+                date_filter["$lte"] = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            filter_query["created_at"] = date_filter
+        
+        # Get audit logs
+        logs = await db.audit_logs.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(logs) > limit
+        if has_more:
+            logs = logs[:-1]
+        
+        # Format logs
+        result_logs = []
+        for log in logs:
+            result_logs.append({
+                "id": log["id"],
+                "type": log["type"],
+                "description": log["description"],
+                "meta": log.get("meta", {}),
+                "actor_id": log.get("actor_id"),
+                "created_at": log["created_at"].isoformat()
+            })
+        
+        return {
+            "logs": result_logs,
+            "total": len(result_logs),
+            "has_more": has_more
+        }
+        
+    except Exception as e:
+        logger.error(f"Get catering audit logs error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering audit logları alınamadı"
+        )
+
+@api_router.get("/supplier/{company_id}/audit-logs")
+async def get_supplier_audit_logs(
+    company_id: str,
+    log_type: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get supplier audit logs with filtering"""
+    try:
+        # Build filter query
+        filter_query = {"company_id": company_id}
+        
+        if log_type:
+            filter_query["type"] = log_type
+        
+        if start_date or end_date:
+            date_filter = {}
+            if start_date:
+                date_filter["$gte"] = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            if end_date:
+                date_filter["$lte"] = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            filter_query["created_at"] = date_filter
+        
+        # Get audit logs
+        logs = await db.audit_logs.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(logs) > limit
+        if has_more:
+            logs = logs[:-1]
+        
+        # Format logs
+        result_logs = []
+        for log in logs:
+            result_logs.append({
+                "id": log["id"],
+                "type": log["type"],
+                "description": log["description"],
+                "meta": log.get("meta", {}),
+                "actor_id": log.get("actor_id"),
+                "created_at": log["created_at"].isoformat()
+            })
+        
+        return {
+            "logs": result_logs,
+            "total": len(result_logs),
+            "has_more": has_more
+        }
+        
+    except Exception as e:
+        logger.error(f"Get supplier audit logs error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi audit logları alınamadı"
+        )
+
 @api_router.get("/corporate/{company_id}/audit-logs")
 async def get_corporate_audit_logs(
     company_id: str,
