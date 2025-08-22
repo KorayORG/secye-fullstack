@@ -111,7 +111,7 @@ const SystemSettings = ({ companyId, userRole, companyType = 'corporate' }) => {
     setSuccess('');
 
     try {
-      await axios.put(`${API}/corporate/${companyId}/settings`, {
+      await axios.put(`${API}/${companyType}/${companyId}/settings`, {
         name: settingsForm.name,
         phone: settingsForm.phone,
         address: settingsForm.address
