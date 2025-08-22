@@ -185,22 +185,29 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
   };
 
   const handleUpdateShift = async () => {
-    if (!editingShift) return;
-    
+    if (!shiftForm.title || !shiftForm.start_time || !shiftForm.end_time || shiftForm.days.length === 0) {
+      setError('Lütfen tüm zorunlu alanları doldurun');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      await axios.put(`${API}/corporate/${companyId}/shifts/${editingShift.id}`, shiftForm);
+      await axios.put(`${API}/${companyType}/${companyId}/shifts/${editingShift.id}`, {
+        ...shiftForm,
+        max_employees: shiftForm.max_employees ? parseInt(shiftForm.max_employees) : null
+      });
       
       setSuccess('Vardiya başarıyla güncellendi');
       setShowEditDialog(false);
+      setEditingShift(null);
       resetForm();
       loadShifts();
     } catch (err) {
-      console.error('Shift update error:', err);
-      setError('Vardiya güncelleme sırasında hata oluştu: ' + (err.response?.data?.detail || err.message));
+      console.error('Update shift error:', err);
+      setError('Vardiya güncellenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
