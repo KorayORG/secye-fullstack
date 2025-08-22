@@ -266,12 +266,17 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
     setEditingShift(null);
   };
 
-  const handleDayToggle = (day) => {
-    const newDays = shiftForm.days.includes(day)
-      ? shiftForm.days.filter(d => d !== day)
-      : [...shiftForm.days, day].sort();
+  const toggleDay = (day) => {
+    const currentDays = [...shiftForm.days];
+    const dayIndex = currentDays.indexOf(day);
     
-    setShiftForm({ ...shiftForm, days: newDays });
+    if (dayIndex > -1) {
+      currentDays.splice(dayIndex, 1);
+    } else {
+      currentDays.push(day);
+    }
+    
+    setShiftForm({ ...shiftForm, days: currentDays.sort() });
   };
 
   const formatDays = (days) => {
