@@ -17,7 +17,8 @@ import {
   Loader2,
   Package,
   Truck,
-  ShoppingCart
+  ShoppingCart,
+  Plus
 } from 'lucide-react';
 
 // Import module components
