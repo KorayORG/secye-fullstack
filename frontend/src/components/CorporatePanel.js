@@ -32,11 +32,28 @@ const API = `${BACKEND_URL}/api`;
 const CorporatePanel = () => {
   const { encUserId, encCompanyType, encCompanyId, page } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Set to false for testing
   const [error, setError] = useState('');
-  const [companyData, setCompanyData] = useState(null);
-  const [dashboardStats, setDashboardStats] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
+  // Mock data for testing
+  const [companyData, setCompanyData] = useState({
+    id: 'test-company-id',
+    name: 'Test Şirketi',
+    type: 'corporate',
+    address: 'Test Adresi',
+    phone: '+90 555 123 4567'
+  });
+  const [dashboardStats, setDashboardStats] = useState({
+    total_employees: 150,
+    active_employees: 145,
+    total_shifts: 5,
+    partner_companies: 8
+  });
+  const [userProfile, setUserProfile] = useState({
+    id: 'test-user-id',
+    full_name: 'Test Kullanıcı',
+    role: 'corporateOwner',
+    email: 'test@test.com'
+  });
 
   // Decode path segments (simplified - in real implementation would verify HMAC)
   const decodePathSegment = (encoded) => {
