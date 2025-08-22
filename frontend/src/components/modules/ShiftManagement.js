@@ -25,7 +25,7 @@ import {
   BarChart3
 } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL;
 
 const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => {
   const [loading, setLoading] = useState(true);
