@@ -453,6 +453,7 @@ const CorporatePanel = () => {
             <EmployeeManagement 
               companyId={getCompanyIdFromPath()} 
               userRole={userProfile?.role}
+              companyType="corporate"
             />
           </TabsContent>
 
