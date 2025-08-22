@@ -1,10 +1,10 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any, Union, Literal
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, time
 from dotenv import load_dotenv
 from pathlib import Path
 import os
@@ -17,6 +17,10 @@ import json
 import redis.asyncio as redis
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+import io
+import pandas as pd
+from random import randint
+import re
 
 # Load environment variables
 ROOT_DIR = Path(__file__).parent
@@ -68,6 +72,8 @@ RoleName = Literal[
     'supplierOwner', 'supplier1', 'supplier2', 'supplier3', 'supplier4'
 ]
 
+UserType = Literal['individual', 'corporate']
+
 class Company(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     type: CompanyType
@@ -98,6 +104,68 @@ class RoleAssignment(BaseModel):
     company_id: str
     role: RoleName
     is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Shift(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    company_id: str  # corporate company
+    title: str
+    start_time: str  # "HH:MM"
+    end_time: str    # "HH:MM"
+    days: List[int]  # 1..7 (Mon..Sun)
+    timezone: str = "Europe/Istanbul"
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SupplierProduct(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    supplier_id: str
+    name: str
+    description: Optional[str] = None
+    unit: str = "adet"  # adet, kg, litre, paket
+    unit_price: float
+    stock: Optional[int] = None
+    image_url: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SupplierOrder(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    supplier_id: str
+    catering_id: str
+    items: List[Dict[str, Any]]  # [{product_id, qty, unit_price}]
+    status: Literal['olusturuldu', 'hazirlaniyor', 'kargoda', 'tamamlandi', 'iptal'] = 'olusturuldu'
+    timeline: Optional[List[Dict[str, Any]]] = None
+    total_amount: float = 0.0
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Message(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    from_user_id: str
+    from_address: str
+    from_company_id: str
+    to_user_ids: List[str]
+    to_addresses: List[str] 
+    to_company_ids: List[str]
+    subject: str
+    body: str
+    labels: Optional[List[str]] = None
+    read_by: Optional[List[str]] = None
+    attachments: Optional[List[Dict[str, str]]] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Offer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    from_company_id: str
+    to_company_id: str
+    unit_price: float
+    message: Optional[str] = None
+    status: Literal['sent', 'accepted', 'rejected', 'updated'] = 'sent'
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -135,6 +203,10 @@ class LoginResponse(BaseModel):
     redirect_url: Optional[str] = None
     message: str
 
+class CompanySearchResponse(BaseModel):
+    companies: List[Dict[str, Any]]
+    has_more: bool
+
 # Corporate Dashboard Models
 class CorporateDashboardStats(BaseModel):
     individual_users: int
@@ -166,10 +238,6 @@ class UserProfile(BaseModel):
     role: str
     is_active: bool
 
-class CompanySearchResponse(BaseModel):
-    companies: List[Dict[str, Any]]
-    has_more: bool
-
 # Admin Models
 class AdminLoginRequest(BaseModel):
     username: str
@@ -197,6 +265,95 @@ class CompanyUpdateRequest(BaseModel):
     phone: Optional[str] = None
     address: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
+
+# Employee Management Models
+class EmployeeListResponse(BaseModel):
+    users: List[Dict[str, Any]]
+    total: int
+    has_more: bool
+
+class EmployeeUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class RoleUpdateRequest(BaseModel):
+    role: RoleName
+    is_active: bool = True
+
+class BulkImportRequest(BaseModel):
+    users: List[Dict[str, str]]  # [{"full_name": "...", "phone": "..."}]
+
+class BulkImportResponse(BaseModel):
+    success: bool
+    imported_count: int
+    failed_count: int
+    failed_users: List[Dict[str, Any]]
+    download_url: Optional[str] = None
+
+# Shift Management Models
+class ShiftCreateRequest(BaseModel):
+    title: str
+    start_time: str
+    end_time: str
+    days: List[int]
+    timezone: str = "Europe/Istanbul"
+
+class ShiftUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    days: Optional[List[int]] = None
+    timezone: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# Product Management Models
+class ProductCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    unit: str = "adet"
+    unit_price: float
+    stock: Optional[int] = None
+
+class ProductUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    unit: Optional[str] = None
+    unit_price: Optional[float] = None
+    stock: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# Order Management Models
+class OrderCreateRequest(BaseModel):
+    supplier_id: str
+    items: List[Dict[str, Any]]
+    notes: Optional[str] = None
+
+class OrderUpdateRequest(BaseModel):
+    status: Optional[Literal['olusturuldu', 'hazirlaniyor', 'kargoda', 'tamamlandi', 'iptal']] = None
+    notes: Optional[str] = None
+
+# Mail Models
+class MailCreateRequest(BaseModel):
+    to_addresses: List[str]
+    subject: str
+    body: str
+    labels: Optional[List[str]] = None
+
+class MailUpdateRequest(BaseModel):
+    labels: Optional[List[str]] = None
+    is_read: Optional[bool] = None
+
+# Offer Models
+class OfferCreateRequest(BaseModel):
+    to_company_id: str
+    unit_price: float
+    message: Optional[str] = None
+
+class OfferUpdateRequest(BaseModel):
+    status: Literal['accepted', 'rejected', 'updated']
+    unit_price: Optional[float] = None
+    message: Optional[str] = None
 
 # ===== UTILITY FUNCTIONS =====
 def create_signed_path_segment(payload: Dict[str, Any], expires_in_hours: int = 2) -> str:
@@ -258,6 +415,18 @@ def create_turkce_slug(text: str) -> str:
     result = result.replace(' ', '-')
     
     return result
+
+def create_email_address(full_name: str, company_slug: str) -> str:
+    """Create email address from full name and company slug"""
+    # Convert Turkish characters and create clean name
+    name_slug = create_turkce_slug(full_name.replace(' ', ''))
+    base_address = f"{name_slug}@{company_slug}.sy"
+    
+    return base_address
+
+def generate_4_digit_password() -> str:
+    """Generate unique 4-digit password"""
+    return f"{randint(0, 9999):04d}"
 
 async def get_user_roles_cached(user_id: str, company_id: str) -> List[str]:
     """Get user roles with Redis caching (fallback to direct DB query)"""
@@ -352,11 +521,88 @@ async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(sec
     
     return admin_data
 
+def check_rbac_permission(user_role: str, required_permission: str) -> bool:
+    """Check if user role has required permission"""
+    # Permission matrix based on role levels
+    permissions = {
+        'corporateOwner': ['company.read', 'company.write', 'user.invite', 'role.assign', 'shift.manage', 'audit.read', 'audit.export', 'mail.use'],
+        'corporate4': ['company.read', 'company.write', 'user.invite', 'role.assign', 'shift.manage', 'mail.use'],
+        'corporate3': ['company.read', 'user.invite', 'shift.manage', 'mail.use'],
+        'corporate2': ['company.read', 'user.invite', 'mail.use'],
+        'corporate1': ['company.read', 'mail.use'],
+        'cateringOwner': ['company.read', 'company.write', 'user.invite', 'role.assign', 'menu.upload', 'offer.send', 'audit.read', 'mail.use'],
+        'catering4': ['company.read', 'company.write', 'user.invite', 'menu.upload', 'offer.send', 'mail.use'],
+        'catering3': ['company.read', 'menu.upload', 'offer.send', 'mail.use'],
+        'catering2': ['company.read', 'mail.use'],
+        'catering1': ['company.read', 'mail.use'],
+        'supplierOwner': ['company.read', 'company.write', 'user.invite', 'role.assign', 'order.create', 'audit.read', 'mail.use'],
+        'supplier4': ['company.read', 'company.write', 'user.invite', 'order.create', 'mail.use'],
+        'supplier3': ['company.read', 'order.create', 'mail.use'],
+        'supplier2': ['company.read', 'mail.use'],
+        'supplier1': ['company.read', 'mail.use']
+    }
+    
+    user_permissions = permissions.get(user_role, [])
+    return required_permission in user_permissions
+
+def get_activity_description(log: Dict[str, Any]) -> str:
+    """Generate human-readable activity description from audit log"""
+    activity_descriptions = {
+        "CORPORATE_APPLICATION_SUBMITTED": "Yeni kurumsal hesap başvurusu yapıldı",
+        "APPLICATION_APPROVED": "Başvuru onaylandı",
+        "APPLICATION_REJECTED": "Başvuru reddedildi",
+        "COMPANY_UPDATED": "Şirket bilgileri güncellendi",
+        "USER_CREATED": "Yeni kullanıcı oluşturuldu",
+        "ROLE_ASSIGNED": "Rol ataması yapıldı",
+        "SHIFT_CREATED": "Yeni vardiya oluşturuldu",
+        "SHIFT_UPDATED": "Vardiya güncellendi",
+        "MENU_UPLOADED": "Yeni menü yüklendi",
+        "PRODUCT_CREATED": "Yeni ürün eklendi",
+        "ORDER_CREATED": "Yeni sipariş oluşturuldu",
+        "ORDER_UPDATED": "Sipariş durumu güncellendi",
+        "MAIL_SENT": "Mail gönderildi",
+        "OFFER_SENT": "Teklif gönderildi",
+        "OFFER_UPDATED": "Teklif güncellendi"
+    }
+    
+    return activity_descriptions.get(log["type"], f"Sistem aktivitesi: {log['type']}")
+
 # ===== API ENDPOINTS =====
 @api_router.get("/")
 async def root():
     return {"message": "Seç Ye API - Multi-tenant Yemek Seçim Platformu"}
 
+@api_router.get("/companies/search")
+async def search_companies(
+    type: CompanyType,
+    query: str = "",
+    limit: int = 20,
+    offset: int = 0
+):
+    """Search companies with server-side pagination"""
+    filter_query = {"type": type, "is_active": True}
+    
+    if query:
+        filter_query["name"] = {"$regex": query, "$options": "i"}
+    
+    companies = await db.companies.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+    
+    has_more = len(companies) > limit
+    if has_more:
+        companies = companies[:-1]
+    
+    company_list = []
+    for company in companies:
+        company_list.append({
+            "id": company["id"],
+            "name": company["name"],
+            "slug": company["slug"],
+            "type": company["type"]
+        })
+    
+    return CompanySearchResponse(companies=company_list, has_more=has_more)
+
+# ===== DASHBOARD APIs =====
 @api_router.get("/auth/verify")
 async def verify_auth(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify authentication token and return user info"""
@@ -523,7 +769,6 @@ async def get_supplier_dashboard(company_id: str):
         }) if 'supplier_products' in await db.list_collection_names() else 0
         
         # Count recent orders (last 30 days)
-        from datetime import timedelta
         recent_date = datetime.now(timezone.utc) - timedelta(days=30)
         recent_orders = await db.supplier_orders.count_documents({
             "supplier_id": company_id,
@@ -611,50 +856,845 @@ async def get_user_profile(user_id: str, company_id: str):
             detail="Kullanıcı profili alınamadı"
         )
 
-def get_activity_description(log: Dict[str, Any]) -> str:
-    """Generate human-readable activity description from audit log"""
-    activity_descriptions = {
-        "CORPORATE_APPLICATION_SUBMITTED": "Yeni kurumsal hesap başvurusu yapıldı",
-        "APPLICATION_APPROVED": "Başvuru onaylandı",
-        "APPLICATION_REJECTED": "Başvuru reddedildi",
-        "COMPANY_UPDATED": "Şirket bilgileri güncellendi",
-        "USER_CREATED": "Yeni kullanıcı oluşturuldu",
-        "ROLE_ASSIGNED": "Rol ataması yapıldı",
-        "SHIFT_CREATED": "Yeni vardiya oluşturuldu",
-        "MENU_UPLOADED": "Yeni menü yüklendi"
-    }
-    
-    return activity_descriptions.get(log["type"], f"Sistem aktivitesi: {log['type']}")
-
-@api_router.get("/companies/search")
-async def search_companies(
-    type: CompanyType,
-    query: str = "",
-    limit: int = 20,
+# ===== EMPLOYEE MANAGEMENT APIs =====
+@api_router.get("/corporate/{company_id}/employees")
+async def get_corporate_employees(
+    company_id: str,
+    type: UserType = None,
+    status: str = None,
+    search: str = "",
+    limit: int = 50,
     offset: int = 0
 ):
-    """Search companies with server-side pagination"""
-    filter_query = {"type": type, "is_active": True}
-    
-    if query:
-        filter_query["name"] = {"$regex": query, "$options": "i"}
-    
-    companies = await db.companies.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
-    
-    has_more = len(companies) > limit
-    if has_more:
-        companies = companies[:-1]
-    
-    company_list = []
-    for company in companies:
-        company_list.append({
-            "id": company["id"],
-            "name": company["name"],
-            "slug": company["slug"],
-            "type": company["type"]
+    """Get corporate employees with filtering"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query
+        filter_query = {}
+        
+        if type == "corporate":
+            # Get users with corporate roles
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"},
+                "is_active": True
+            }).to_list(None)
+            
+            user_ids = [role["user_id"] for role in corporate_roles]
+            filter_query["id"] = {"$in": user_ids}
+        elif type == "individual":
+            # Get users without corporate roles (individual users)
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"}
+            }).to_list(None)
+            
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            filter_query["id"] = {"$nin": corporate_user_ids}
+        
+        if status:
+            filter_query["is_active"] = status == "active"
+        
+        if search:
+            filter_query["$or"] = [
+                {"full_name": {"$regex": search, "$options": "i"}},
+                {"phone": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}}
+            ]
+        
+        # Get users
+        users = await db.users.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(users) > limit
+        if has_more:
+            users = users[:-1]
+        
+        # Get role information for each user
+        result_users = []
+        for user in users:
+            user_role = await db.role_assignments.find_one({
+                "user_id": user["id"],
+                "company_id": company_id,
+                "is_active": True
+            })
+            
+            result_users.append({
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"],
+                "email": user.get("email"),
+                "role": user_role["role"] if user_role else "individual",
+                "is_active": user["is_active"],
+                "created_at": user["created_at"].isoformat(),
+                "last_login_at": user.get("last_login_at").isoformat() if user.get("last_login_at") else None
+            })
+        
+        return EmployeeListResponse(
+            users=result_users,
+            total=len(result_users),
+            has_more=has_more
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get employees error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Çalışanlar alınamadı"
+        )
+
+@api_router.put("/corporate/{company_id}/employees/{user_id}")
+async def update_employee(
+    company_id: str,
+    user_id: str,
+    request: EmployeeUpdateRequest
+):
+    """Update employee details"""
+    try:
+        # Verify user exists
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if request.full_name is not None:
+            update_data["full_name"] = request.full_name
+        
+        if request.email is not None:
+            update_data["email"] = request.email
+        
+        if request.is_active is not None:
+            update_data["is_active"] = request.is_active
+        
+        # Update user
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": update_data}
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "USER_UPDATED",
+            "company_id": company_id,
+            "user_id": user_id,
+            "meta": {
+                "changes": {k: v for k, v in update_data.items() if k != "updated_at"}
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Kullanıcı bilgileri güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update employee error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Kullanıcı güncellenemedi"
+        )
+
+@api_router.post("/corporate/{company_id}/employees/{user_id}/role")
+async def assign_employee_role(
+    company_id: str,
+    user_id: str,
+    request: RoleUpdateRequest
+):
+    """Assign or update employee role"""
+    try:
+        # Verify user exists
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Check if role assignment already exists
+        existing_role = await db.role_assignments.find_one({
+            "user_id": user_id,
+            "company_id": company_id
         })
+        
+        if existing_role:
+            # Update existing role
+            await db.role_assignments.update_one(
+                {"user_id": user_id, "company_id": company_id},
+                {"$set": {
+                    "role": request.role,
+                    "is_active": request.is_active,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+        else:
+            # Create new role assignment
+            role_assignment = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "company_id": company_id,
+                "role": request.role,
+                "is_active": request.is_active,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            await db.role_assignments.insert_one(role_assignment)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "ROLE_ASSIGNED",
+            "company_id": company_id,
+            "user_id": user_id,
+            "meta": {
+                "role": request.role,
+                "is_active": request.is_active
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Rol ataması güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Assign role error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Rol ataması yapılamadı"
+        )
+
+@api_router.post("/corporate/{company_id}/employees/bulk-import")
+async def bulk_import_employees(
+    company_id: str,
+    request: BulkImportRequest
+):
+    """Bulk import employees from Excel data"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        imported_users = []
+        failed_users = []
+        passwords = []
+        
+        for user_data in request.users:
+            try:
+                # Check if phone already exists
+                existing_user = await db.users.find_one({"phone": user_data["phone"]})
+                if existing_user:
+                    failed_users.append({
+                        "full_name": user_data["full_name"],
+                        "phone": user_data["phone"],
+                        "error": "Telefon numarası zaten kayıtlı"
+                    })
+                    continue
+                
+                # Generate password
+                password = generate_4_digit_password()
+                password_hash = ph.hash(password)
+                
+                # Create user
+                user = {
+                    "id": str(uuid.uuid4()),
+                    "full_name": user_data["full_name"],
+                    "phone": user_data["phone"],
+                    "email": create_email_address(user_data["full_name"], company["slug"]),
+                    "password_hash": password_hash,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+                
+                await db.users.insert_one(user)
+                
+                imported_users.append(user)
+                passwords.append({
+                    "full_name": user_data["full_name"],
+                    "phone": user_data["phone"], 
+                    "password": password
+                })
+                
+            except Exception as e:
+                failed_users.append({
+                    "full_name": user_data.get("full_name", ""),
+                    "phone": user_data.get("phone", ""),
+                    "error": str(e)
+                })
+        
+        # Create Excel file with passwords
+        df = pd.DataFrame(passwords)
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False, columns=["full_name", "phone", "password"])
+        excel_buffer.seek(0)
+        
+        # In a real implementation, you'd save this to a file storage system
+        # For now, we'll just return the data
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "BULK_IMPORT",
+            "company_id": company_id,
+            "meta": {
+                "imported_count": len(imported_users),
+                "failed_count": len(failed_users)
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return BulkImportResponse(
+            success=True,
+            imported_count=len(imported_users),
+            failed_count=len(failed_users),
+            failed_users=failed_users,
+            download_url=None  # In real implementation, this would be a file URL
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk import error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Toplu içe aktarma başarısız"
+        )
+
+# ===== SHIFT MANAGEMENT APIs =====
+@api_router.get("/corporate/{company_id}/shifts")
+async def get_corporate_shifts(
+    company_id: str,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get corporate shifts"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Get shifts
+        shifts = await db.shifts.find({
+            "company_id": company_id
+        }).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(shifts) > limit
+        if has_more:
+            shifts = shifts[:-1]
+        
+        # Format shifts
+        result_shifts = []
+        for shift in shifts:
+            result_shifts.append({
+                "id": shift["id"],
+                "title": shift["title"],
+                "start_time": shift["start_time"],
+                "end_time": shift["end_time"],
+                "days": shift["days"],
+                "timezone": shift.get("timezone", "Europe/Istanbul"),
+                "is_active": shift.get("is_active", True),
+                "created_at": shift["created_at"].isoformat()
+            })
+        
+        return {
+            "shifts": result_shifts,
+            "total": len(result_shifts),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get shifts error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Vardiyalar alınamadı"
+        )
+
+@api_router.post("/corporate/{company_id}/shifts")
+async def create_corporate_shift(
+    company_id: str,
+    request: ShiftCreateRequest
+):
+    """Create new corporate shift"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Validate time format
+        try:
+            datetime.strptime(request.start_time, "%H:%M")
+            datetime.strptime(request.end_time, "%H:%M")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Geçersiz saat formatı. HH:MM formatında olmalıdır.")
+        
+        # Validate days
+        if not all(1 <= day <= 7 for day in request.days):
+            raise HTTPException(status_code=400, detail="Günler 1-7 arasında olmalıdır")
+        
+        # Create shift
+        shift = {
+            "id": str(uuid.uuid4()),
+            "company_id": company_id,
+            "title": request.title,
+            "start_time": request.start_time,
+            "end_time": request.end_time,
+            "days": request.days,
+            "timezone": request.timezone,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.shifts.insert_one(shift)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "SHIFT_CREATED",
+            "company_id": company_id,
+            "meta": {
+                "shift_id": shift["id"],
+                "title": request.title
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Vardiya oluşturuldu", "shift_id": shift["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create shift error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Vardiya oluşturulamadı"
+        )
+
+@api_router.put("/corporate/{company_id}/shifts/{shift_id}")
+async def update_corporate_shift(
+    company_id: str,
+    shift_id: str,
+    request: ShiftUpdateRequest
+):
+    """Update corporate shift"""
+    try:
+        # Verify shift exists
+        shift = await db.shifts.find_one({"id": shift_id, "company_id": company_id})
+        if not shift:
+            raise HTTPException(status_code=404, detail="Vardiya bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if request.title is not None:
+            update_data["title"] = request.title
+        
+        if request.start_time is not None:
+            try:
+                datetime.strptime(request.start_time, "%H:%M")
+                update_data["start_time"] = request.start_time
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Geçersiz başlangıç saati formatı")
+        
+        if request.end_time is not None:
+            try:
+                datetime.strptime(request.end_time, "%H:%M")  
+                update_data["end_time"] = request.end_time
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Geçersiz bitiş saati formatı")
+        
+        if request.days is not None:
+            if not all(1 <= day <= 7 for day in request.days):
+                raise HTTPException(status_code=400, detail="Günler 1-7 arasında olmalıdır")
+            update_data["days"] = request.days
+        
+        if request.timezone is not None:
+            update_data["timezone"] = request.timezone
+        
+        if request.is_active is not None:
+            update_data["is_active"] = request.is_active
+        
+        # Update shift
+        await db.shifts.update_one(
+            {"id": shift_id},
+            {"$set": update_data}
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "SHIFT_UPDATED",
+            "company_id": company_id,
+            "meta": {
+                "shift_id": shift_id,
+                "changes": {k: v for k, v in update_data.items() if k != "updated_at"}
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Vardiya güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update shift error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Vardiya güncellenemedi"
+        )
+
+@api_router.delete("/corporate/{company_id}/shifts/{shift_id}")
+async def delete_corporate_shift(company_id: str, shift_id: str):
+    """Delete corporate shift"""
+    try:
+        # Verify shift exists
+        shift = await db.shifts.find_one({"id": shift_id, "company_id": company_id})
+        if not shift:
+            raise HTTPException(status_code=404, detail="Vardiya bulunamadı")
+        
+        # Soft delete - mark as inactive
+        await db.shifts.update_one(
+            {"id": shift_id},
+            {"$set": {
+                "is_active": False,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "SHIFT_DELETED",
+            "company_id": company_id,
+            "meta": {
+                "shift_id": shift_id,
+                "title": shift["title"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Vardiya silindi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete shift error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Vardiya silinemedi"
+        )
+
+# ===== SYSTEM SETTINGS APIs =====
+@api_router.get("/corporate/{company_id}/settings")
+async def get_corporate_settings(company_id: str):
+    """Get corporate system settings"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        return {
+            "company": {
+                "id": company["id"],
+                "name": company["name"],
+                "slug": company["slug"],
+                "phone": company.get("phone"),
+                "address": company.get("address"),
+                "is_active": company["is_active"],
+                "created_at": company["created_at"].isoformat(),
+                "updated_at": company["updated_at"].isoformat()
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get settings error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ayarlar alınamadı"
+        )
+
+@api_router.get("/corporate/{company_id}/audit-logs")
+async def get_corporate_audit_logs(
+    company_id: str,
+    log_type: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get corporate audit logs with filtering"""
+    try:
+        # Build filter query
+        filter_query = {"company_id": company_id}
+        
+        if log_type:
+            filter_query["type"] = log_type
+        
+        if start_date or end_date:
+            date_filter = {}
+            if start_date:
+                date_filter["$gte"] = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            if end_date:
+                date_filter["$lte"] = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            filter_query["created_at"] = date_filter
+        
+        # Get audit logs
+        logs = await db.audit_logs.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(logs) > limit
+        if has_more:
+            logs = logs[:-1]
+        
+        # Format logs
+        result_logs = []
+        for log in logs:
+            result_logs.append({
+                "id": log["id"],
+                "type": log["type"],
+                "description": get_activity_description(log),
+                "user_id": log.get("user_id"),
+                "actor_id": log.get("actor_id"),
+                "meta": log.get("meta", {}),
+                "created_at": log["created_at"].isoformat()
+            })
+        
+        return {
+            "logs": result_logs,
+            "total": len(result_logs),
+            "has_more": has_more
+        }
+        
+    except Exception as e:
+        logger.error(f"Get audit logs error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Audit logları alınamadı"
+        )
+
+# Continue with existing endpoints...
+@api_router.post("/auth/register/corporate/application", response_model=ApplicationResponse)
+async def register_corporate_application(request: CorporateApplicationRequest):
+    """Submit corporate account application"""
+    try:
+        # Check if phone already exists
+        existing_user = await db.users.find_one({"phone": request.applicant["phone"]})
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bu telefon numarası zaten kayıtlı"
+            )
+        
+        # Hash password
+        password_hash = ph.hash(request.password)
+        
+        # Create application document
+        application = {
+            "id": str(uuid.uuid4()),
+            "target": request.target,
+            "applicant": {
+                **request.applicant,
+                "password_hash": password_hash
+            },
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # If it's an existing company application, verify company exists
+        if request.mode == 'existing':
+            company = await db.companies.find_one({
+                "id": request.target["company_id"],
+                "is_active": True
+            })
+            if not company:
+                raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Save application
+        await db.corporate_applications.insert_one(application)
+        
+        # Log the application for audit
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "CORPORATE_APPLICATION_SUBMITTED",
+            "meta": {
+                "application_id": application["id"],
+                "mode": request.mode,
+                "applicant_phone": request.applicant["phone"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return ApplicationResponse(
+            success=True,
+            message="Başvurunuz başarıyla alındı. İnceleme sonrası size bilgi verilecektir.",
+            application_id=application["id"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Corporate application error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Başvuru işlemi sırasında hata oluştu"
+        )
+
+@api_router.post("/auth/register/individual")
+async def register_individual(request: RegisterIndividualRequest):
+    """Register individual user"""
+    try:
+        # Check if phone already exists
+        existing_user = await db.users.find_one({"phone": request.phone})
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bu telefon numarası zaten kayıtlı"
+            )
+        
+        # Check if company exists
+        company = await db.companies.find_one({
+            "id": request.company_id,
+            "type": request.company_type,
+            "is_active": True
+        })
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Hash password
+        password_hash = ph.hash(request.password)
+        
+        # Create user
+        user = User(
+            full_name=request.full_name,
+            phone=request.phone,
+            password_hash=password_hash
+        )
+        
+        await db.users.insert_one(user.dict())
+        
+        return {"success": True, "message": "Kayıt başarılı"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Individual registration error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Kayıt işlemi sırasında hata oluştu"
+        )
+
+@api_router.post("/auth/login")
+async def login(request: LoginRequest, response: Response):
+    """Unified login endpoint"""
+    try:
+        # Find user by phone
+        user = await db.users.find_one({"phone": request.phone, "is_active": True})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Telefon numarası veya şifre hatalı"
+            )
+        
+        # Verify password
+        try:
+            ph.verify(user['password_hash'], request.password)
+        except VerifyMismatchError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Telefon numarası veya şifre hatalı"
+            )
+        
+        # Check if user has role in requested company
+        roles = await get_user_roles_cached(user['id'], request.company_id)
+        if not roles:
+            # Check if this is individual access to corporate
+            if request.company_type == 'corporate':
+                # Individual users can access corporate companies they belong to
+                company = await db.companies.find_one({
+                    "id": request.company_id,
+                    "type": "corporate",
+                    "is_active": True
+                })
+                if not company:
+                    raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+                
+                # For now, allow individual access (we'll implement proper individual checking later)
+                redirect_url = "/app/home"
+                return LoginResponse(
+                    success=True,
+                    user_id=user['id'],
+                    redirect_url=redirect_url,
+                    message="Giriş başarılı - Bireysel panel"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Bu şirkette yetkiniz bulunmamaktadır"
+                )
+        
+        # Corporate panel access - create signed URL
+        highest_role = get_highest_role(roles)
+        if highest_role:
+            # Create signed path segments
+            enc_user_id = create_signed_path_segment({"user_id": user['id']})
+            enc_company_type = create_signed_path_segment({"company_type": request.company_type})
+            enc_company_id = create_signed_path_segment({"company_id": request.company_id})
+            
+            redirect_url = f"/{enc_user_id}/{enc_company_type}/{enc_company_id}/general"
+            
+            return LoginResponse(
+                success=True,
+                user_id=user['id'],
+                redirect_url=redirect_url,
+                message="Giriş başarılı - Kurumsal panel"
+            )
+        
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Yetkisiz erişim"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Giriş işlemi sırasında hata oluştu"
+        )
+
+def get_highest_role(roles: List[str]) -> Optional[str]:
+    """Get highest priority role from list"""
+    role_priority = {
+        'corporateOwner': 10, 'corporate4': 9, 'corporate3': 8, 'corporate2': 7, 'corporate1': 6,
+        'cateringOwner': 10, 'catering4': 9, 'catering3': 8, 'catering2': 7, 'catering1': 6,
+        'supplierOwner': 10, 'supplier4': 9, 'supplier3': 8, 'supplier2': 7, 'supplier1': 6
+    }
     
-    return CompanySearchResponse(companies=company_list, has_more=has_more)
+    if not roles:
+        return None
+    
+    return max(roles, key=lambda role: role_priority.get(role, 0))
 
 # ===== ADMIN ENDPOINTS =====
 @api_router.post("/admin/login", response_model=AdminLoginResponse)
@@ -920,6 +1960,7 @@ async def update_application_status(
             detail="Başvuru güncellenemedi"
         )
 
+# ... Continue with remaining admin endpoints (companies, etc.)
 @api_router.get("/admin/companies")
 async def get_admin_companies(
     type: Optional[CompanyType] = None,
@@ -1111,212 +2152,6 @@ async def get_company_details(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Şirket detayları alınamadı"
         )
-
-# ===== EXISTING ENDPOINTS =====
-@api_router.post("/auth/register/corporate/application", response_model=ApplicationResponse)
-async def register_corporate_application(request: CorporateApplicationRequest):
-    """Submit corporate account application"""
-    try:
-        # Check if phone already exists
-        existing_user = await db.users.find_one({"phone": request.applicant["phone"]})
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Bu telefon numarası zaten kayıtlı"
-            )
-        
-        # Hash password
-        password_hash = ph.hash(request.password)
-        
-        # Create application document
-        application = {
-            "id": str(uuid.uuid4()),
-            "target": request.target,
-            "applicant": {
-                **request.applicant,
-                "password_hash": password_hash
-            },
-            "status": "pending",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc)
-        }
-        
-        # If it's an existing company application, verify company exists
-        if request.mode == 'existing':
-            company = await db.companies.find_one({
-                "id": request.target["company_id"],
-                "is_active": True
-            })
-            if not company:
-                raise HTTPException(status_code=404, detail="Şirket bulunamadı")
-        
-        # Save application
-        await db.corporate_applications.insert_one(application)
-        
-        # Log the application for audit
-        audit_log = {
-            "id": str(uuid.uuid4()),
-            "type": "CORPORATE_APPLICATION_SUBMITTED",
-            "meta": {
-                "application_id": application["id"],
-                "mode": request.mode,
-                "applicant_phone": request.applicant["phone"]
-            },
-            "created_at": datetime.now(timezone.utc)
-        }
-        await db.audit_logs.insert_one(audit_log)
-        
-        return ApplicationResponse(
-            success=True,
-            message="Başvurunuz başarıyla alındı. İnceleme sonrası size bilgi verilecektir.",
-            application_id=application["id"]
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Corporate application error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Başvuru işlemi sırasında hata oluştu"
-        )
-
-@api_router.post("/auth/register/individual")
-async def register_individual(request: RegisterIndividualRequest):
-    """Register individual user"""
-    try:
-        # Check if phone already exists
-        existing_user = await db.users.find_one({"phone": request.phone})
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Bu telefon numarası zaten kayıtlı"
-            )
-        
-        # Check if company exists
-        company = await db.companies.find_one({
-            "id": request.company_id,
-            "type": request.company_type,
-            "is_active": True
-        })
-        if not company:
-            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
-        
-        # Hash password
-        password_hash = ph.hash(request.password)
-        
-        # Create user
-        user = User(
-            full_name=request.full_name,
-            phone=request.phone,
-            password_hash=password_hash
-        )
-        
-        await db.users.insert_one(user.dict())
-        
-        return {"success": True, "message": "Kayıt başarılı"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Individual registration error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Kayıt işlemi sırasında hata oluştu"
-        )
-
-@api_router.post("/auth/login")
-async def login(request: LoginRequest, response: Response):
-    """Unified login endpoint"""
-    try:
-        # Find user by phone
-        user = await db.users.find_one({"phone": request.phone, "is_active": True})
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Telefon numarası veya şifre hatalı"
-            )
-        
-        # Verify password
-        try:
-            ph.verify(user['password_hash'], request.password)
-        except VerifyMismatchError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Telefon numarası veya şifre hatalı"
-            )
-        
-        # Check if user has role in requested company
-        roles = await get_user_roles_cached(user['id'], request.company_id)
-        if not roles:
-            # Check if this is individual access to corporate
-            if request.company_type == 'corporate':
-                # Individual users can access corporate companies they belong to
-                company = await db.companies.find_one({
-                    "id": request.company_id,
-                    "type": "corporate",
-                    "is_active": True
-                })
-                if not company:
-                    raise HTTPException(status_code=404, detail="Şirket bulunamadı")
-                
-                # For now, allow individual access (we'll implement proper individual checking later)
-                redirect_url = "/app/home"
-                return LoginResponse(
-                    success=True,
-                    user_id=user['id'],
-                    redirect_url=redirect_url,
-                    message="Giriş başarılı - Bireysel panel"
-                )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Bu şirkette yetkiniz bulunmamaktadır"
-                )
-        
-        # Corporate panel access - create signed URL
-        highest_role = get_highest_role(roles)
-        if highest_role:
-            # Create signed path segments
-            enc_user_id = create_signed_path_segment({"user_id": user['id']})
-            enc_company_type = create_signed_path_segment({"company_type": request.company_type})
-            enc_company_id = create_signed_path_segment({"company_id": request.company_id})
-            
-            redirect_url = f"/{enc_user_id}/{enc_company_type}/{enc_company_id}/general"
-            
-            return LoginResponse(
-                success=True,
-                user_id=user['id'],
-                redirect_url=redirect_url,
-                message="Giriş başarılı - Kurumsal panel"
-            )
-        
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Yetkisiz erişim"
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Login error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Giriş işlemi sırasında hata oluştu"
-        )
-
-def get_highest_role(roles: List[str]) -> Optional[str]:
-    """Get highest priority role from list"""
-    role_priority = {
-        'corporateOwner': 10, 'corporate4': 9, 'corporate3': 8, 'corporate2': 7, 'corporate1': 6,
-        'cateringOwner': 10, 'catering4': 9, 'catering3': 8, 'catering2': 7, 'catering1': 6,
-        'supplierOwner': 10, 'supplier4': 9, 'supplier3': 8, 'supplier2': 7, 'supplier1': 6
-    }
-    
-    if not roles:
-        return None
-    
-    return max(roles, key=lambda role: role_priority.get(role, 0))
 
 # Include router
 app.include_router(api_router)
