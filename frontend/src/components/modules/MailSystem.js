@@ -272,9 +272,9 @@ const MailSystem = ({ companyId, userId, userRole }) => {
               <div>
                 <label className="text-sm font-medium">Alıcılar</label>
                 <Select
-                  value=""
+                  value="select_recipient"
                   onValueChange={(value) => {
-                    if (value && !composeForm.to_addresses.includes(value)) {
+                    if (value && value !== "select_recipient" && !composeForm.to_addresses.includes(value)) {
                       setComposeForm({
                         ...composeForm,
                         to_addresses: [...composeForm.to_addresses, value]
