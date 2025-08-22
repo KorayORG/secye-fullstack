@@ -4120,9 +4120,25 @@ async def get_catering_menus(
         if has_more:
             menus = menus[:-1]
         
+        # Format menus for JSON serialization
+        formatted_menus = []
+        for menu in menus:
+            formatted_menu = {
+                "id": menu["id"],
+                "corporate_id": menu["corporate_id"],
+                "catering_id": menu["catering_id"],
+                "shift_id": menu["shift_id"],
+                "week_start": menu["week_start"],
+                "menu_data": menu["menu_data"],
+                "is_active": menu.get("is_active", True),
+                "created_at": menu["created_at"].isoformat(),
+                "updated_at": menu["updated_at"].isoformat()
+            }
+            formatted_menus.append(formatted_menu)
+        
         return {
-            "menus": menus,
-            "total": len(menus),
+            "menus": formatted_menus,
+            "total": len(formatted_menus),
             "has_more": has_more
         }
         
