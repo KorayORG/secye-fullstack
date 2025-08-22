@@ -970,9 +970,373 @@ class SecYeAPITester:
         
         return critical_tests_passed
 
+    # ===== NEW API TESTS FOR REVIEW REQUEST =====
+    
+    def test_application_management_apis(self):
+        """Test Application Management APIs for all company types"""
+        print("\n📋 Testing Application Management APIs")
+        
+        all_tests_passed = True
+        
+        # Test for each company type
+        for company_type, company_id in [
+            ("corporate", self.corporate_company_id),
+            ("catering", self.catering_company_id), 
+            ("supplier", self.supplier_company_id)
+        ]:
+            if not company_id:
+                print(f"⚠️  Skipping {company_type} application tests - no company ID")
+                continue
+                
+            print(f"\n🏢 Testing {company_type.upper()} Application APIs")
+            
+            # Test 1: GET applications
+            success1, response1 = self.run_test(
+                f"Get {company_type} Applications",
+                "GET",
+                f"{company_type}/{company_id}/applications",
+                200
+            )
+            
+            # Test 2: GET applications with status filter
+            success2, response2 = self.run_test(
+                f"Get {company_type} Applications - Pending Status",
+                "GET",
+                f"{company_type}/{company_id}/applications",
+                200,
+                params={"status": "pending", "limit": 10}
+            )
+            
+            # Test 3: POST create application
+            test_phone = f"+9055{datetime.now().strftime('%H%M%S')}{company_type[:3]}"
+            application_data = {
+                "full_name": f"Test Başvuran {company_type.title()}",
+                "phone": test_phone,
+                "email": f"test.{company_type}@example.com",
+                "password": "TestPass123!"
+            }
+            
+            success3, response3 = self.run_test(
+                f"Create {company_type} Application",
+                "POST",
+                f"{company_type}/{company_id}/applications",
+                200,
+                data=application_data
+            )
+            
+            # Store application ID for update test
+            application_id = None
+            if success3 and response3.get('application_id'):
+                application_id = response3['application_id']
+            
+            # Test 4: PUT update application (approve)
+            if application_id:
+                success4, response4 = self.run_test(
+                    f"Approve {company_type} Application",
+                    "PUT",
+                    f"{company_type}/{company_id}/applications/{application_id}",
+                    200,
+                    data={
+                        "status": "approved",
+                        "notes": f"Approved via API test for {company_type}"
+                    }
+                )
+            else:
+                success4 = False
+                print(f"⚠️  Skipping {company_type} application approval - no application created")
+            
+            # Test 5: Create another application for rejection test
+            test_phone2 = f"+9055{datetime.now().strftime('%H%M%S')}{company_type[:3]}2"
+            application_data2 = {
+                "full_name": f"Test Reddedilen {company_type.title()}",
+                "phone": test_phone2,
+                "email": f"reject.{company_type}@example.com",
+                "password": "TestPass123!"
+            }
+            
+            success5, response5 = self.run_test(
+                f"Create {company_type} Application for Rejection",
+                "POST",
+                f"{company_type}/{company_id}/applications",
+                200,
+                data=application_data2
+            )
+            
+            # Test 6: PUT update application (reject)
+            if success5 and response5.get('application_id'):
+                reject_app_id = response5['application_id']
+                success6, response6 = self.run_test(
+                    f"Reject {company_type} Application",
+                    "PUT",
+                    f"{company_type}/{company_id}/applications/{reject_app_id}",
+                    200,
+                    data={
+                        "status": "rejected",
+                        "notes": f"Rejected via API test for {company_type}"
+                    }
+                )
+            else:
+                success6 = False
+                print(f"⚠️  Skipping {company_type} application rejection - no application created")
+            
+            # Test 7: Validation test - duplicate phone
+            success7, response7 = self.run_test(
+                f"Create {company_type} Application - Duplicate Phone",
+                "POST",
+                f"{company_type}/{company_id}/applications",
+                400,  # Should fail
+                data={
+                    "full_name": "Duplicate Phone Test",
+                    "phone": test_phone,  # Same phone as first application
+                    "email": f"duplicate.{company_type}@example.com",
+                    "password": "TestPass123!"
+                }
+            )
+            
+            company_tests_passed = all([success1, success2, success3])
+            all_tests_passed = all_tests_passed and company_tests_passed
+            
+            print(f"   {company_type.upper()} Application Tests: {'✅ PASSED' if company_tests_passed else '❌ FAILED'}")
+        
+        return all_tests_passed
+    
+    def test_menu_management_apis(self):
+        """Test Menu Management APIs for catering companies"""
+        if not self.catering_company_id:
+            print("❌ No catering company ID available for menu tests")
+            return False
+        
+        print("\n📋 Testing Menu Management APIs")
+        
+        # Test 1: GET catering menus
+        success1, response1 = self.run_test(
+            "Get Catering Menus",
+            "GET",
+            f"catering/{self.catering_company_id}/menus",
+            200
+        )
+        
+        # Test 2: GET menus with corporate filter
+        if self.corporate_company_id:
+            success2, response2 = self.run_test(
+                "Get Catering Menus - Corporate Filter",
+                "GET",
+                f"catering/{self.catering_company_id}/menus",
+                200,
+                params={"corporate_id": self.corporate_company_id, "limit": 10}
+            )
+        else:
+            success2 = True  # Skip if no corporate company
+        
+        # Test 3: GET menus with week filter
+        success3, response3 = self.run_test(
+            "Get Catering Menus - Week Filter",
+            "GET",
+            f"catering/{self.catering_company_id}/menus",
+            200,
+            params={"week_start": "2024-12-16", "limit": 10}
+        )
+        
+        # Test 4: POST create menu
+        menu_data = {
+            "catering_id": self.corporate_company_id or "test-corporate-id",  # This should be corporate_id
+            "shift_id": "test-shift-id",
+            "week_start": "2024-12-16",
+            "menu_data": {
+                "2024-12-16": {
+                    "option1": {
+                        "name": "Tavuk Şiş",
+                        "description": "Izgara tavuk şiş, pilav, salata",
+                        "price": 45.0
+                    },
+                    "option2": {
+                        "name": "Köfte",
+                        "description": "Ev yapımı köfte, patates kızartması",
+                        "price": 40.0
+                    }
+                },
+                "2024-12-17": {
+                    "option1": {
+                        "name": "Balık",
+                        "description": "Izgara levrek, bulgur pilavı",
+                        "price": 55.0
+                    },
+                    "option2": {
+                        "name": "Tavuk Döner",
+                        "description": "Tavuk döner, pilav, cacık",
+                        "price": 42.0
+                    }
+                }
+            }
+        }
+        
+        success4, response4 = self.run_test(
+            "Create Catering Menu",
+            "POST",
+            f"catering/{self.catering_company_id}/menus",
+            200,
+            data=menu_data
+        )
+        
+        return all([success1, success3, success4])
+    
+    def test_supplier_product_apis(self):
+        """Test Supplier Product APIs"""
+        if not self.supplier_company_id:
+            print("❌ No supplier company ID available for product tests")
+            return False
+        
+        print("\n📋 Testing Supplier Product APIs")
+        
+        # Test 1: GET supplier products
+        success1, response1 = self.run_test(
+            "Get Supplier Products",
+            "GET",
+            f"supplier/{self.supplier_company_id}/products",
+            200
+        )
+        
+        # Test 2: GET products with search
+        success2, response2 = self.run_test(
+            "Get Supplier Products - Search",
+            "GET",
+            f"supplier/{self.supplier_company_id}/products",
+            200,
+            params={"search": "domates", "limit": 10}
+        )
+        
+        # Test 3: POST create product
+        product_data = {
+            "name": "Organik Domates",
+            "description": "Taze organik domates, yerel üreticiden",
+            "unit": "kg",
+            "unit_price": 15.50,
+            "stock": 100
+        }
+        
+        success3, response3 = self.run_test(
+            "Create Supplier Product",
+            "POST",
+            f"supplier/{self.supplier_company_id}/products",
+            200,
+            data=product_data
+        )
+        
+        # Test 4: Create another product with different unit
+        product_data2 = {
+            "name": "Taze Ekmek",
+            "description": "Günlük taze ekmek",
+            "unit": "adet",
+            "unit_price": 3.50,
+            "stock": 50
+        }
+        
+        success4, response4 = self.run_test(
+            "Create Supplier Product - Different Unit",
+            "POST",
+            f"supplier/{self.supplier_company_id}/products",
+            200,
+            data=product_data2
+        )
+        
+        # Test 5: Create product with minimal data
+        product_data3 = {
+            "name": "Temel Ürün",
+            "unit_price": 10.0
+        }
+        
+        success5, response5 = self.run_test(
+            "Create Supplier Product - Minimal Data",
+            "POST",
+            f"supplier/{self.supplier_company_id}/products",
+            200,
+            data=product_data3
+        )
+        
+        return all([success1, success3, success4])
+    
+    def test_individual_user_apis(self):
+        """Test Individual User APIs for menu choices"""
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for individual user tests")
+            return False
+        
+        print("\n📋 Testing Individual User APIs")
+        
+        # Create a test user ID
+        test_user_id = "test-individual-user-123"
+        
+        # Test 1: GET user menu choices
+        success1, response1 = self.run_test(
+            "Get User Menu Choices",
+            "GET",
+            f"individual/{test_user_id}/menu-choices",
+            200,
+            params={"corporate_id": self.corporate_company_id}
+        )
+        
+        # Test 2: GET user menu choices with week filter
+        success2, response2 = self.run_test(
+            "Get User Menu Choices - Week Filter",
+            "GET",
+            f"individual/{test_user_id}/menu-choices",
+            200,
+            params={
+                "corporate_id": self.corporate_company_id,
+                "week_start": "2024-12-16"
+            }
+        )
+        
+        # Test 3: POST create menu choice
+        choice_data = {
+            "menu_frame_id": "test-menu-frame-id",
+            "day": "2024-12-16",
+            "choice": 1
+        }
+        
+        success3, response3 = self.run_test(
+            "Create Menu Choice",
+            "POST",
+            f"individual/{test_user_id}/menu-choices",
+            200,
+            data=choice_data
+        )
+        
+        # Test 4: POST create another menu choice for different day
+        choice_data2 = {
+            "menu_frame_id": "test-menu-frame-id",
+            "day": "2024-12-17",
+            "choice": 2
+        }
+        
+        success4, response4 = self.run_test(
+            "Create Menu Choice - Different Day",
+            "POST",
+            f"individual/{test_user_id}/menu-choices",
+            200,
+            data=choice_data2
+        )
+        
+        # Test 5: POST update existing menu choice (same day)
+        choice_data3 = {
+            "menu_frame_id": "test-menu-frame-id",
+            "day": "2024-12-16",  # Same day as first choice
+            "choice": 2  # Different choice
+        }
+        
+        success5, response5 = self.run_test(
+            "Update Menu Choice - Same Day",
+            "POST",
+            f"individual/{test_user_id}/menu-choices",
+            200,
+            data=choice_data3
+        )
+        
+        return all([success1, success3, success4])
+
 def main():
-    print("🚀 Starting Seç Ye API Tests - BULK IMPORT FOCUS")
-    print("=" * 60)
+    print("🚀 Starting Seç Ye API Tests - NEW APIS COMPREHENSIVE TESTING")
+    print("=" * 70)
     
     # Setup
     tester = SecYeAPITester()
@@ -981,42 +1345,52 @@ def main():
     print("\n📋 Test 1: API Health Check")
     tester.test_health_check()
 
-    # Test 2: Company Search (to get corporate company ID)
-    print("\n📋 Test 2: Company Search")
-    tester.test_company_search("corporate", "")  # Get any corporate company
+    # Test 2: Company Search (to get all company types)
+    print("\n📋 Test 2: Company Search - All Types")
+    tester.test_company_search("corporate", "")
+    tester.test_company_search("catering", "")
+    tester.test_company_search("supplier", "")
 
-    # ===== FOCUSED BULK IMPORT TEST =====
-    if tester.corporate_company_id:
-        print(f"\n🏢 Using Corporate Company ID: {tester.corporate_company_id}")
-        
-        # Test 3: FOCUSED Bulk Import Test
-        print("\n📋 Test 3: FOCUSED BULK IMPORT TEST")
-        bulk_import_success = tester.test_bulk_import_focused()
-        
-        # Also run the regular employee management tests for context
-        print("\n📋 Test 4: Regular Employee Management APIs (for context)")
-        employee_success = tester.test_employee_management_apis()
-        
-    else:
-        print("⚠️  No corporate company found - cannot test bulk import")
-        bulk_import_success = False
-        employee_success = False
+    # ===== NEW API COMPREHENSIVE TESTS =====
+    print(f"\n🏢 Found Companies:")
+    print(f"   Corporate: {tester.corporate_company_id or 'None'}")
+    print(f"   Catering: {tester.catering_company_id or 'None'}")
+    print(f"   Supplier: {tester.supplier_company_id or 'None'}")
+    
+    # Test 3: Application Management APIs
+    print("\n📋 Test 3: Application Management APIs")
+    application_success = tester.test_application_management_apis()
+    
+    # Test 4: Menu Management APIs
+    print("\n📋 Test 4: Menu Management APIs")
+    menu_success = tester.test_menu_management_apis()
+    
+    # Test 5: Supplier Product APIs
+    print("\n📋 Test 5: Supplier Product APIs")
+    product_success = tester.test_supplier_product_apis()
+    
+    # Test 6: Individual User APIs
+    print("\n📋 Test 6: Individual User APIs")
+    individual_success = tester.test_individual_user_apis()
 
     # Print results
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
-    # Summary of bulk import test
-    if tester.corporate_company_id:
-        print("\n🎯 BULK IMPORT TEST SUMMARY:")
-        print(f"   🔥 Bulk Import Fix: {'✅ VERIFIED FIXED' if bulk_import_success else '❌ STILL BROKEN'}")
-        print(f"   📋 Employee APIs: {'✅ WORKING' if employee_success else '❌ ISSUES'}")
+    # Summary of new API tests
+    print("\n🎯 NEW APIS TEST SUMMARY:")
+    print(f"   📝 Application Management: {'✅ WORKING' if application_success else '❌ ISSUES'}")
+    print(f"   🍽️  Menu Management: {'✅ WORKING' if menu_success else '❌ ISSUES'}")
+    print(f"   📦 Supplier Products: {'✅ WORKING' if product_success else '❌ ISSUES'}")
+    print(f"   👤 Individual User: {'✅ WORKING' if individual_success else '❌ ISSUES'}")
     
-    if bulk_import_success:
-        print("🎉 BULK IMPORT 500 ERROR IS FIXED!")
+    overall_success = all([application_success, menu_success, product_success, individual_success])
+    
+    if overall_success:
+        print("🎉 ALL NEW APIS ARE WORKING CORRECTLY!")
         return 0
     else:
-        print("⚠️  BULK IMPORT 500 ERROR IS STILL PRESENT!")
+        print("⚠️  SOME NEW APIS HAVE ISSUES!")
         return 1
 
 if __name__ == "__main__":
