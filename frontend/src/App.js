@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import CorporatePanel from './components/CorporatePanel';
 import IndividualPanel from './components/IndividualPanel';
+import AdminLogin from './components/AdminLogin';
+import AdminPanel from './components/AdminPanel';
 
 function App() {
   return (
@@ -12,6 +14,8 @@ function App() {
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="/:encUserId/:encCompanyType/:encCompanyId/:page" element={<CorporatePanel />} />
           <Route path="/app/*" element={<IndividualPanel />} />
         </Routes>
