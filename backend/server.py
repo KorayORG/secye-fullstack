@@ -1189,6 +1189,265 @@ async def bulk_import_employees(
             detail="Toplu içe aktarma başarısız"
         )
 
+@api_router.get("/corporate/{company_id}/employees/excel-template")
+async def get_corporate_excel_template(company_id: str):
+    """Get Excel template for bulk employee import"""
+    try:
+        # Create a sample Excel file
+        df = pd.DataFrame({
+            "full_name": ["Ahmet Yılmaz", "Ayşe Demir"],
+            "phone": ["+905551234567", "+905559876543"]
+        })
+        
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+        
+        return StreamingResponse(
+            io.BytesIO(excel_buffer.read()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=calisan_sablonu.xlsx"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Excel template error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Excel şablonu oluşturulamadı"
+        )
+
+@api_router.post("/catering/{company_id}/employees/bulk-import")
+async def bulk_import_catering_employees(
+    company_id: str,
+    request: BulkImportRequest
+):
+    """Bulk import catering employees from Excel data"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        
+        imported_users = []
+        failed_users = []
+        passwords = []
+        
+        for user_data in request.users:
+            try:
+                # Check if phone already exists
+                existing_user = await db.users.find_one({"phone": user_data["phone"]})
+                if existing_user:
+                    failed_users.append({
+                        "full_name": user_data["full_name"],
+                        "phone": user_data["phone"],
+                        "error": "Telefon numarası zaten kayıtlı"
+                    })
+                    continue
+                
+                # Generate password
+                password = generate_4_digit_password()
+                password_hash = ph.hash(password)
+                
+                # Create user
+                user = {
+                    "id": str(uuid.uuid4()),
+                    "full_name": user_data["full_name"],
+                    "phone": user_data["phone"],
+                    "email": create_email_address(user_data["full_name"], company["slug"]),
+                    "password_hash": password_hash,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+                
+                await db.users.insert_one(user)
+                
+                imported_users.append(user)
+                passwords.append({
+                    "full_name": user_data["full_name"],
+                    "phone": user_data["phone"], 
+                    "password": password
+                })
+                
+            except Exception as e:
+                failed_users.append({
+                    "full_name": user_data.get("full_name", ""),
+                    "phone": user_data.get("phone", ""),
+                    "error": str(e)
+                })
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "BULK_IMPORT",
+            "company_id": company_id,
+            "meta": {
+                "imported_count": len(imported_users),
+                "failed_count": len(failed_users)
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return BulkImportResponse(
+            success=True,
+            imported_count=len(imported_users),
+            failed_count=len(failed_users),
+            failed_users=failed_users,
+            download_url=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Catering bulk import error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering toplu içe aktarma başarısız"
+        )
+
+@api_router.get("/catering/{company_id}/employees/excel-template")
+async def get_catering_excel_template(company_id: str):
+    """Get Excel template for bulk catering employee import"""
+    try:
+        df = pd.DataFrame({
+            "full_name": ["Mehmet Chef", "Zeynep Aşçıbaşı"],
+            "phone": ["+905551234567", "+905559876543"]
+        })
+        
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+        
+        return StreamingResponse(
+            io.BytesIO(excel_buffer.read()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=catering_calisan_sablonu.xlsx"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Catering Excel template error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering Excel şablonu oluşturulamadı"
+        )
+
+@api_router.post("/supplier/{company_id}/employees/bulk-import")
+async def bulk_import_supplier_employees(
+    company_id: str,
+    request: BulkImportRequest
+):
+    """Bulk import supplier employees from Excel data"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
+        
+        imported_users = []
+        failed_users = []
+        passwords = []
+        
+        for user_data in request.users:
+            try:
+                # Check if phone already exists
+                existing_user = await db.users.find_one({"phone": user_data["phone"]})
+                if existing_user:
+                    failed_users.append({
+                        "full_name": user_data["full_name"],
+                        "phone": user_data["phone"],
+                        "error": "Telefon numarası zaten kayıtlı"
+                    })
+                    continue
+                
+                # Generate password
+                password = generate_4_digit_password()
+                password_hash = ph.hash(password)
+                
+                # Create user
+                user = {
+                    "id": str(uuid.uuid4()),
+                    "full_name": user_data["full_name"],
+                    "phone": user_data["phone"],
+                    "email": create_email_address(user_data["full_name"], company["slug"]),
+                    "password_hash": password_hash,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+                
+                await db.users.insert_one(user)
+                
+                imported_users.append(user)
+                passwords.append({
+                    "full_name": user_data["full_name"],
+                    "phone": user_data["phone"], 
+                    "password": password
+                })
+                
+            except Exception as e:
+                failed_users.append({
+                    "full_name": user_data.get("full_name", ""),
+                    "phone": user_data.get("phone", ""),
+                    "error": str(e)
+                })
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "BULK_IMPORT",
+            "company_id": company_id,
+            "meta": {
+                "imported_count": len(imported_users),
+                "failed_count": len(failed_users)
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return BulkImportResponse(
+            success=True,
+            imported_count=len(imported_users),
+            failed_count=len(failed_users),
+            failed_users=failed_users,
+            download_url=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Supplier bulk import error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi toplu içe aktarma başarısız"
+        )
+
+@api_router.get("/supplier/{company_id}/employees/excel-template")
+async def get_supplier_excel_template(company_id: str):
+    """Get Excel template for bulk supplier employee import"""
+    try:
+        df = pd.DataFrame({
+            "full_name": ["Ali Tedarikçi", "Fatma Depo"],
+            "phone": ["+905551234567", "+905559876543"]
+        })
+        
+        excel_buffer = io.BytesIO()
+        df.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+        
+        return StreamingResponse(
+            io.BytesIO(excel_buffer.read()),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=supplier_calisan_sablonu.xlsx"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Supplier Excel template error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Tedarikçi Excel şablonu oluşturulamadı"
+        )
+
 # ===== SHIFT MANAGEMENT APIs =====
 @api_router.get("/corporate/{company_id}/shifts")
 async def get_corporate_shifts(
