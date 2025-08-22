@@ -2753,7 +2753,7 @@ async def send_supplier_message(
             "id": str(uuid.uuid4()),
             "type": "MAIL_SENT",
             "company_id": company_id,
-            "actor_id": request.from_user_id,
+            "actor_id": from_user_id,
             "meta": {
                 "message_id": message_id,
                 "subject": request.subject,
