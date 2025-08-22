@@ -1955,7 +1955,7 @@ async def get_catering_audit_logs(
             result_logs.append({
                 "id": log["id"],
                 "type": log["type"],
-                "description": log["description"],
+                "description": get_activity_description(log),
                 "meta": log.get("meta", {}),
                 "actor_id": log.get("actor_id"),
                 "created_at": log["created_at"].isoformat()
@@ -2012,7 +2012,7 @@ async def get_supplier_audit_logs(
             result_logs.append({
                 "id": log["id"],
                 "type": log["type"],
-                "description": log["description"],
+                "description": get_activity_description(log),
                 "meta": log.get("meta", {}),
                 "actor_id": log.get("actor_id"),
                 "created_at": log["created_at"].isoformat()
