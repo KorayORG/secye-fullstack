@@ -866,45 +866,61 @@ async def get_corporate_employees(
     limit: int = 50,
     offset: int = 0
 ):
-    """Get corporate employees with filtering"""
+    """Get corporate employees with filtering - ONLY users associated with this company"""
     try:
         # Verify company exists
         company = await db.companies.find_one({"id": company_id, "is_active": True})
         if not company:
             raise HTTPException(status_code=404, detail="Şirket bulunamadı")
         
-        # Build filter query
-        filter_query = {}
+        # CRITICAL FIX: First get ALL users who have ANY relationship with this company
+        all_company_roles = await db.role_assignments.find({
+            "company_id": company_id
+        }).to_list(None)
+        
+        company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
+        
+        if not company_user_ids:
+            return EmployeeListResponse(users=[], total=0, has_more=False)
+        
+        # Build filter query - MUST restrict to company users only
+        filter_query = {"id": {"$in": company_user_ids}}
         
         if type == "corporate":
-            # Get users with corporate roles
+            # Get users with corporate roles in THIS company
             corporate_roles = await db.role_assignments.find({
                 "company_id": company_id,
                 "role": {"$regex": "^corporate"},
                 "is_active": True
             }).to_list(None)
             
-            user_ids = [role["user_id"] for role in corporate_roles]
-            filter_query["id"] = {"$in": user_ids}
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            filter_query["id"] = {"$in": corporate_user_ids}
         elif type == "individual":
-            # Get users without corporate roles (individual users)
+            # Get users without corporate roles in THIS company
             corporate_roles = await db.role_assignments.find({
                 "company_id": company_id,
                 "role": {"$regex": "^corporate"}
             }).to_list(None)
             
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
-            filter_query["id"] = {"$nin": corporate_user_ids}
+            # Still restrict to company users, but exclude those with corporate roles
+            individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
+            filter_query["id"] = {"$in": individual_user_ids}
         
         if status:
             filter_query["is_active"] = status == "active"
         
         if search:
-            filter_query["$or"] = [
+            search_conditions = [
                 {"full_name": {"$regex": search, "$options": "i"}},
                 {"phone": {"$regex": search, "$options": "i"}},
                 {"email": {"$regex": search, "$options": "i"}}
             ]
+            # Combine search with company restriction
+            filter_query = {"$and": [{"id": {"$in": filter_query["id"]["$in"]}}, {"$or": search_conditions}]}
+            if status:
+                filter_query["$and"].append({"is_active": status == "active"})
         
         # Get users
         users = await db.users.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
