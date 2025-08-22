@@ -226,7 +226,12 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
       start_time: '09:00',
       end_time: '17:00',
       days: [],
-      timezone: 'Europe/Istanbul'
+      timezone: 'Europe/Istanbul',
+      description: '',
+      is_active: true,
+      max_employees: null,
+      break_duration: 60,
+      is_overtime_allowed: false
     });
     setEditingShift(null);
   };
