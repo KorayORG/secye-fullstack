@@ -158,6 +158,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "System settings and audit logs APIs working correctly. GET company settings returns proper company data. Audit logs API supports filtering by type and date range. All tested scenarios passed."
+      - working: true
+        agent: "testing"
+        comment: "✅ SYSTEM SETTINGS ISOLATION VERIFIED! Comprehensive testing completed for all company types: 1) Corporate settings APIs (GET/PUT) working correctly with proper company isolation. 2) Catering settings APIs working for all catering companies. 3) Supplier settings APIs working for all supplier companies. 4) Company settings save functionality (PUT endpoints) working correctly. 5) All APIs properly return only the requested company's data - no cross-company data leakage. System settings APIs now work correctly for all company types (corporate/catering/supplier) as requested."
 
   - task: "Partnership APIs (Catering Management)"
     implemented: true
