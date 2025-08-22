@@ -2742,7 +2742,7 @@ async def send_supplier_message(
             "body": request.body,
             "labels": request.labels or [],
             "read_by": [],
-            "attachments": request.attachments or [],
+            "attachments": [],
             "created_at": datetime.now(timezone.utc)
         }
         
