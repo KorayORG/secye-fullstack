@@ -252,6 +252,39 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     }
   };
 
+  const handleViewApplication = (application) => {
+    setViewingApplication(application);
+    setApplicationDecision({
+      status: '',
+      notes: ''
+    });
+    setShowApplicationDetailDialog(true);
+  };
+
+  const handleApplicationDecision = async () => {
+    if (!viewingApplication || !applicationDecision.status) return;
+    
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.put(`${API}/${companyType}/${companyId}/applications/${viewingApplication.id}`, applicationDecision);
+      
+      setSuccess(`Başvuru ${applicationDecision.status === 'approved' ? 'onaylandı' : 'reddedildi'}`);
+      setShowApplicationDetailDialog(false);
+      loadApplications();
+      if (applicationDecision.status === 'approved') {
+        loadEmployees(); // Reload employees if approved
+      }
+    } catch (err) {
+      console.error('Application decision error:', err);
+      setError('Başvuru işlemi sırasında hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const downloadExcelTemplate = async () => {
     try {
       const response = await axios.get(`${API}/${companyType}/${companyId}/employees/excel-template`, {
