@@ -236,8 +236,8 @@ class SecYeAPITester:
         return success, response
 
 def main():
-    print("🚀 Starting Seç Ye API Tests")
-    print("=" * 50)
+    print("🚀 Starting Seç Ye API Tests - Corporate Application Focus")
+    print("=" * 60)
     
     # Setup
     tester = SecYeAPITester()
@@ -250,21 +250,37 @@ def main():
     print("\n📋 Test 2: Company Search")
     tester.test_company_search("corporate", "A-Tech")
 
-    # Test 3: Login (if company was found)
-    print("\n📋 Test 3: Corporate Login")
+    # Test 3: Corporate Application - Existing Company
+    print("\n📋 Test 3: Corporate Application - Existing Company")
+    tester.test_corporate_application_existing()
+
+    # Test 4: Corporate Application - New Company
+    print("\n📋 Test 4: Corporate Application - New Company")
+    tester.test_corporate_application_new()
+
+    # Test 5: Corporate Application Validation
+    print("\n📋 Test 5: Corporate Application Validation")
+    tester.test_corporate_application_validation()
+
+    # Test 6: Individual Registration
+    print("\n📋 Test 6: Individual Registration")
+    tester.test_individual_registration()
+
+    # Test 7: Login (if company was found)
+    print("\n📋 Test 7: Corporate Login")
     if tester.company_id:
         tester.test_login()
     else:
         print("⚠️  Skipping login test - no company found")
 
     # Additional company search tests
-    print("\n📋 Test 4: Additional Company Searches")
+    print("\n📋 Test 8: Additional Company Searches")
     tester.test_company_search("corporate", "")  # Empty query
     tester.test_company_search("catering", "")   # Different type
     tester.test_company_search("supplier", "")   # Different type
 
     # Print results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
     if tester.tests_passed == tester.tests_run:
