@@ -1490,6 +1490,401 @@ async def get_corporate_audit_logs(
             detail="Audit logları alınamadı"
         )
 
+# ===== MAIL/MESSAGING APIs =====
+@api_router.get("/corporate/{company_id}/messages")
+async def get_corporate_messages(
+    company_id: str,
+    user_id: str,
+    type: str = "inbox",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get corporate messages for user"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query based on message type
+        filter_query = {}
+        
+        if type == "inbox":
+            # Messages sent TO this user
+            filter_query["to_user_ids"] = user_id
+        elif type == "sent":
+            # Messages sent FROM this user  
+            filter_query["from_user_id"] = user_id
+        elif type == "archived":
+            # Messages with archive label
+            filter_query["$or"] = [
+                {"to_user_ids": user_id, "labels": "archived"},
+                {"from_user_id": user_id, "labels": "archived"}
+            ]
+        
+        # Get messages
+        messages = await db.messages.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(messages) > limit
+        if has_more:
+            messages = messages[:-1]
+        
+        # Format messages
+        result_messages = []
+        for msg in messages:
+            result_messages.append({
+                "id": msg["id"],
+                "from_user_id": msg["from_user_id"],
+                "from_address": msg["from_address"],
+                "to_addresses": msg["to_addresses"],
+                "subject": msg["subject"],
+                "body": msg["body"],
+                "labels": msg.get("labels", []),
+                "read_by": msg.get("read_by", []),
+                "attachments": msg.get("attachments", []),
+                "created_at": msg["created_at"].isoformat()
+            })
+        
+        return {
+            "messages": result_messages,
+            "total": len(result_messages),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get messages error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Mesajlar alınamadı"
+        )
+
+@api_router.post("/corporate/{company_id}/messages")
+async def send_corporate_message(
+    company_id: str,
+    request: MailCreateRequest
+):
+    """Send a message within corporate network"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Extract user IDs from addresses (simplified - in real impl would be more robust)
+        to_user_ids = []
+        for addr in request.to_addresses:
+            # For now, assume format is "Name <user_id@company.sy>" or direct user_id
+            if "@" in addr:
+                user_id = addr.split("@")[0].split("<")[-1].strip()
+            else:
+                user_id = addr
+            to_user_ids.append(user_id)
+        
+        # Create message
+        message = {
+            "id": str(uuid.uuid4()),
+            "from_user_id": request.dict().get("from_user_id", "system"),
+            "from_address": request.dict().get("from_user_id", "system"),
+            "from_company_id": company_id,
+            "to_user_ids": to_user_ids,
+            "to_addresses": request.to_addresses,
+            "to_company_ids": [company_id],
+            "subject": request.subject,
+            "body": request.body,
+            "labels": request.labels or [],
+            "read_by": [],
+            "attachments": [],
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.messages.insert_one(message)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "MAIL_SENT",
+            "company_id": company_id,
+            "user_id": request.dict().get("from_user_id"),
+            "meta": {
+                "message_id": message["id"],
+                "to_count": len(to_user_ids),
+                "subject": request.subject
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Mesaj başarıyla gönderildi", "message_id": message["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Mesaj gönderilemedi"
+        )
+
+@api_router.put("/corporate/{company_id}/messages/{message_id}")
+async def update_corporate_message(
+    company_id: str,
+    message_id: str,
+    request: MailUpdateRequest
+):
+    """Update message (mark as read, add labels, etc.)"""
+    try:
+        # Verify message exists
+        message = await db.messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+        
+        # Prepare update data
+        update_data = {}
+        
+        if request.labels is not None:
+            update_data["labels"] = request.labels
+        
+        if request.is_read is not None and request.is_read:
+            # Add user to read_by list if not already there
+            read_by = message.get("read_by", [])
+            # In a real implementation, we'd get the current user ID from auth
+            # For now, we'll use a placeholder approach
+            current_user_id = "current_user"  # This should come from auth context
+            if current_user_id not in read_by:
+                read_by.append(current_user_id)
+            update_data["read_by"] = read_by
+        
+        if update_data:
+            await db.messages.update_one(
+                {"id": message_id},
+                {"$set": update_data}
+            )
+        
+        return {"success": True, "message": "Mesaj güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Mesaj güncellenemedi"
+        )
+
+@api_router.delete("/corporate/{company_id}/messages/{message_id}")
+async def delete_corporate_message(
+    company_id: str,
+    message_id: str
+):
+    """Delete a message"""
+    try:
+        # Verify message exists
+        message = await db.messages.find_one({"id": message_id})
+        if not message:
+            raise HTTPException(status_code=404, detail="Mesaj bulunamadı")
+        
+        # In a real implementation, we might soft-delete or move to trash
+        # For now, we'll hard delete
+        await db.messages.delete_one({"id": message_id})
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "MAIL_DELETED",
+            "company_id": company_id,
+            "meta": {
+                "message_id": message_id,
+                "subject": message.get("subject", "")
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Mesaj silindi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete message error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Mesaj silinemedi"
+        )
+
+# ===== PARTNERSHIP APIs (FOR CATERING MANAGEMENT) =====
+@api_router.get("/corporate/{company_id}/partnerships")
+async def get_corporate_partnerships(
+    company_id: str,
+    partnership_type: str = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get corporate partnerships"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query
+        filter_query = {"corporate_id": company_id, "is_active": True}
+        
+        if partnership_type:
+            filter_query["partnership_type"] = partnership_type
+        
+        # Get partnerships
+        partnerships = await db.partnerships.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(partnerships) > limit
+        if has_more:
+            partnerships = partnerships[:-1]
+        
+        # Format partnerships
+        result_partnerships = []
+        for partnership in partnerships:
+            result_partnerships.append({
+                "id": partnership["id"],
+                "corporate_id": partnership["corporate_id"],
+                "catering_id": partnership.get("catering_id"),
+                "supplier_id": partnership.get("supplier_id"),
+                "partnership_type": partnership["partnership_type"],
+                "is_active": partnership["is_active"],
+                "created_at": partnership["created_at"].isoformat()
+            })
+        
+        return {
+            "partnerships": result_partnerships,
+            "total": len(result_partnerships),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get partnerships error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ortaklıklar alınamadı"
+        )
+
+@api_router.post("/corporate/{company_id}/partnerships")
+async def create_corporate_partnership(
+    company_id: str,
+    request: dict  # Simple dict for flexibility
+):
+    """Create a new partnership"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Extract partnership data
+        partnership_type = request.get("partnership_type", "catering")
+        partner_id = request.get("catering_id") or request.get("supplier_id")
+        
+        if not partner_id:
+            raise HTTPException(status_code=400, detail="Partner ID gerekli")
+        
+        # Check if partnership already exists
+        existing = await db.partnerships.find_one({
+            "corporate_id": company_id,
+            f"{partnership_type}_id": partner_id,
+            "is_active": True
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Ortaklık zaten mevcut")
+        
+        # Create partnership
+        partnership = {
+            "id": str(uuid.uuid4()),
+            "corporate_id": company_id,
+            "partnership_type": partnership_type,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # Add partner-specific field
+        partnership[f"{partnership_type}_id"] = partner_id
+        
+        await db.partnerships.insert_one(partnership)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "PARTNERSHIP_CREATED",
+            "company_id": company_id,
+            "meta": {
+                "partnership_id": partnership["id"],
+                "partnership_type": partnership_type,
+                "partner_id": partner_id
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Ortaklık oluşturuldu", "partnership_id": partnership["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create partnership error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ortaklık oluşturulamadı"
+        )
+
+@api_router.delete("/corporate/{company_id}/partnerships/{partnership_id}")
+async def delete_corporate_partnership(
+    company_id: str,
+    partnership_id: str
+):
+    """Delete/deactivate a partnership"""
+    try:
+        # Verify partnership exists
+        partnership = await db.partnerships.find_one({"id": partnership_id, "corporate_id": company_id})
+        if not partnership:
+            raise HTTPException(status_code=404, detail="Ortaklık bulunamadı")
+        
+        # Soft delete by setting is_active to False
+        await db.partnerships.update_one(
+            {"id": partnership_id},
+            {
+                "$set": {
+                    "is_active": False,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "PARTNERSHIP_DELETED",
+            "company_id": company_id,
+            "meta": {
+                "partnership_id": partnership_id,
+                "partnership_type": partnership.get("partnership_type")
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Ortaklık sonlandırıldı"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete partnership error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ortaklık sonlandırılamadı"
+        )
+
 # Continue with existing endpoints...
 @api_router.post("/auth/register/corporate/application", response_model=ApplicationResponse)
 async def register_corporate_application(request: CorporateApplicationRequest):
