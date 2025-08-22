@@ -180,7 +180,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
     }
     
     try {
-      await axios.delete(`${API}/corporate/${companyId}/messages/${messageId}`);
+      await axios.delete(`${API}/${companyType}/${companyId}/messages/${messageId}`);
       
       setSuccess('Mesaj silindi');
       setSelectedMessage(null);
