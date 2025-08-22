@@ -1130,11 +1130,14 @@ async def bulk_import_employees(
                     "error": str(e)
                 })
         
-        # Create Excel file with passwords
-        df = pd.DataFrame(passwords)
-        excel_buffer = io.BytesIO()
-        df.to_excel(excel_buffer, index=False, columns=["full_name", "phone", "password"])
-        excel_buffer.seek(0)
+        # Create Excel file with passwords (if any users were imported)
+        if passwords:
+            df = pd.DataFrame(passwords)
+            excel_buffer = io.BytesIO()
+            df.to_excel(excel_buffer, index=False, engine='openpyxl')
+            excel_buffer.seek(0)
+        else:
+            excel_buffer = None
         
         # In a real implementation, you'd save this to a file storage system
         # For now, we'll just return the data
