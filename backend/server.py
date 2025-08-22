@@ -1,3 +1,228 @@
+# ===== DYNAMIC EMPLOYEES ROUTE FOR SIGNED PATHS =====
+from fastapi import Request
+import re
+from fastapi import APIRouter
+
+api_router = APIRouter(prefix="/api")
+
+# Dinamik çalışanlar route'u api_router ile ekleniyor
+@api_router.get(r"/{user_token}/{company_type_token}/{company_id_token}/employees")
+async def dynamic_employees_route(user_token: str, company_type_token: str, company_id_token: str, request: Request):
+    """Decode signed path segments and forward to the correct employees endpoint."""
+    user_payload = verify_signed_path_segment(user_token)
+    company_type_payload = verify_signed_path_segment(company_type_token)
+    company_id_payload = verify_signed_path_segment(company_id_token)
+    if not user_payload or not company_type_payload or not company_id_payload:
+        raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
+    company_type = company_type_payload.get("company_type")
+    company_id = company_id_payload.get("company_id")
+    if not company_type or not company_id:
+        raise HTTPException(status_code=400, detail="Eksik şirket bilgisi")
+    params = dict(request.query_params)
+    if company_type == "corporate":
+        return await get_corporate_employees(company_id=company_id, **params)
+    elif company_type == "catering":
+        raise HTTPException(status_code=501, detail="Catering çalışanları için endpoint eksik")
+    elif company_type == "supplier":
+        raise HTTPException(status_code=501, detail="Supplier çalışanları için endpoint eksik")
+    else:
+        raise HTTPException(status_code=400, detail="Bilinmeyen şirket tipi")
+# ===== CATERING SHIFTS API =====
+from fastapi import APIRouter
+
+
+api_router = APIRouter(prefix="/api")
+
+# Dinamik çalışanlar route'u api_router ile ekleniyor
+from fastapi import Request
+@api_router.get(r"/{user_token}/{company_type_token}/{company_id_token}/employees")
+async def dynamic_employees_route(user_token: str, company_type_token: str, company_id_token: str, request: Request):
+    """Decode signed path segments and forward to the correct employees endpoint."""
+    user_payload = verify_signed_path_segment(user_token)
+    company_type_payload = verify_signed_path_segment(company_type_token)
+    company_id_payload = verify_signed_path_segment(company_id_token)
+    if not user_payload or not company_type_payload or not company_id_payload:
+        raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
+    company_type = company_type_payload.get("company_type")
+    company_id = company_id_payload.get("company_id")
+    if not company_type or not company_id:
+        raise HTTPException(status_code=400, detail="Eksik şirket bilgisi")
+    params = dict(request.query_params)
+    if company_type == "corporate":
+        return await get_corporate_employees(company_id=company_id, **params)
+    elif company_type == "catering":
+        raise HTTPException(status_code=501, detail="Catering çalışanları için endpoint eksik")
+    elif company_type == "supplier":
+        raise HTTPException(status_code=501, detail="Supplier çalışanları için endpoint eksik")
+    else:
+        raise HTTPException(status_code=400, detail="Bilinmeyen şirket tipi")
+
+@api_router.get("/catering/{company_id}/shifts")
+async def get_catering_shifts(
+    company_id: str,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get shifts for a catering company"""
+    try:
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
+        shifts = await db.shifts.find({"company_id": company_id}).skip(offset).limit(limit + 1).to_list(None)
+        has_more = len(shifts) > limit
+        if has_more:
+            shifts = shifts[:-1]
+        result_shifts = []
+        for shift in shifts:
+            result_shifts.append({
+                "id": shift["id"],
+                "title": shift["title"],
+                "start_time": shift["start_time"],
+                "end_time": shift["end_time"],
+                "days": shift["days"],
+                "timezone": shift.get("timezone", "Europe/Istanbul"),
+                "is_active": shift.get("is_active", True),
+                "created_at": shift["created_at"].isoformat()
+            })
+        return {
+            "shifts": result_shifts,
+            "total": len(result_shifts),
+            "has_more": has_more
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get catering shifts error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Catering vardiyaları alınamadı"
+        )
+
+# ===== CATERING FIRMALAR (TÜM FİRMALAR) API =====
+@api_router.get("/catering/{company_id}/corporates")
+async def get_all_corporates_for_catering(
+    company_id: str,
+    search: str = "",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get all corporates in the system (for catering panel)"""
+    try:
+        # Sadece aktif corporate şirketler
+        query = {"type": "corporate", "is_active": True}
+        if search:
+            query["name"] = {"$regex": search, "$options": "i"}
+        corporates = await db.companies.find(query).skip(offset).limit(limit + 1).to_list(None)
+        has_more = len(corporates) > limit
+        if has_more:
+            corporates = corporates[:-1]
+        # Her corporate için aktif ve toplam bireysel kullanıcı sayısı
+        result = []
+        for corp in corporates:
+            # Aktif bireysel kullanıcılar
+            active_individuals = await db.role_assignments.count_documents({
+                "company_id": corp["id"],
+                "role": "individual",
+                "is_active": True
+            })
+            total_individuals = await db.role_assignments.count_documents({
+                "company_id": corp["id"],
+                "role": "individual"
+            })
+            result.append({
+                "id": corp["id"],
+                "name": corp["name"],
+                "phone": corp.get("phone"),
+                "active_individual_count": active_individuals,
+                "total_individual_count": total_individuals
+            })
+        return {"corporates": result, "total": len(result), "has_more": has_more}
+    except Exception as e:
+        logger.error(f"Get all corporates for catering error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Firmalar alınamadı"
+        )
+
+# ===== CATERING ANLAŞMALI FİRMALAR API =====
+@api_router.get("/catering/{company_id}/partner-corporates")
+async def get_partner_corporates_for_catering(
+    company_id: str,
+    search: str = "",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get partner corporates for a catering company (anlaşmalı firmalar)"""
+    try:
+        # Anlaşmalı şirketler: catering_partners koleksiyonunda tutulduğu varsayılıyor
+        partners = await db.catering_partners.find({"catering_id": company_id}).to_list(None)
+        partner_corp_ids = [p["corporate_id"] for p in partners]
+        if not partner_corp_ids:
+            return {"corporates": [], "total": 0, "has_more": False}
+        query = {"id": {"$in": partner_corp_ids}, "type": "corporate", "is_active": True}
+        if search:
+            query["name"] = {"$regex": search, "$options": "i"}
+        corporates = await db.companies.find(query).skip(offset).limit(limit + 1).to_list(None)
+        has_more = len(corporates) > limit
+        if has_more:
+            corporates = corporates[:-1]
+        result = []
+        for corp in corporates:
+            result.append({
+                "id": corp["id"],
+                "name": corp["name"],
+                "phone": corp.get("phone")
+            })
+        return {"corporates": result, "total": len(result), "has_more": has_more}
+    except Exception as e:
+        logger.error(f"Get partner corporates for catering error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Anlaşmalı firmalar alınamadı"
+        )
+
+# ===== CATERING PANELDE CORPORATE DETAY/İSTATİSTİK API =====
+@api_router.get("/catering/{company_id}/corporates/{corporate_id}/stats")
+async def get_corporate_stats_for_catering(
+    company_id: str,
+    corporate_id: str,
+    start_date: str = None,
+    end_date: str = None
+):
+    """Get statistics for a corporate (for catering panel)"""
+    try:
+        # Son 1 haftaya ait yemek tercihleri, gün gün, hafta hafta, ay ay
+        # Menü seçimleri: menu_choices koleksiyonunda tutulduğu varsayılıyor
+        from_date = datetime.now(timezone.utc) - timedelta(days=7)
+        if start_date:
+            from_date = datetime.fromisoformat(start_date)
+        to_date = datetime.now(timezone.utc)
+        if end_date:
+            to_date = datetime.fromisoformat(end_date)
+        # Filtre: ilgili corporate_id, catering_id ve tarih aralığı
+        choices = await db.menu_choices.find({
+            "corporate_id": corporate_id,
+            "catering_id": company_id,
+            "created_at": {"$gte": from_date, "$lte": to_date}
+        }).to_list(None)
+        # Alternatif/geleneksel tercihler ve vardiya bazlı breakdown
+        stats = {}
+        for choice in choices:
+            day = choice["created_at"].date().isoformat()
+            shift = choice.get("shift_id", "unknown")
+            pref_type = choice.get("preference_type", "unknown")  # "alternatif" veya "geleneksel"
+            if day not in stats:
+                stats[day] = {}
+            if shift not in stats[day]:
+                stats[day][shift] = {"alternatif": 0, "geleneksel": 0}
+            stats[day][shift][pref_type] = stats[day][shift].get(pref_type, 0) + 1
+        return {"stats": stats}
+    except Exception as e:
+        logger.error(f"Get corporate stats for catering error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="İstatistikler alınamadı"
+        )
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -45,8 +270,21 @@ except Exception:
     redis_available = False
     print("Warning: Redis not available, using in-memory cache")
 
-# Create the main app
-app = FastAPI(title="Seç Ye API", version="1.0.0")
+
+# Modern FastAPI lifespan event handler (replaces deprecated @app.on_event)
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("FastAPI uygulaması başlatıldı.")
+    yield
+    logger.info("FastAPI uygulaması durduruluyor...")
+    client.close()
+    if redis_available and redis_client:
+        await redis_client.close()
+
+app = FastAPI(title="Seç Ye API", version="1.0.0", lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
 
 # CORS middleware
@@ -964,20 +1202,21 @@ async def get_corporate_employees(
         company = await db.companies.find_one({"id": company_id, "is_active": True})
         if not company:
             raise HTTPException(status_code=404, detail="Şirket bulunamadı")
-        
+
         # CRITICAL FIX: First get ALL users who have ANY relationship with this company
         all_company_roles = await db.role_assignments.find({
             "company_id": company_id
         }).to_list(None)
-        
+
         company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
-        
+
         if not company_user_ids:
             return EmployeeListResponse(users=[], total=0, has_more=False)
-        
+
         # Build filter query - MUST restrict to company users only
+        # Use 'id' field for user lookup (not '_id')
         filter_query = {"id": {"$in": company_user_ids}}
-        
+
         if type == "corporate":
             # Get users with corporate roles in THIS company
             corporate_roles = await db.role_assignments.find({
@@ -985,7 +1224,6 @@ async def get_corporate_employees(
                 "role": {"$regex": "^corporate"},
                 "is_active": True
             }).to_list(None)
-            
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
             filter_query["id"] = {"$in": corporate_user_ids}
         elif type == "individual":
@@ -994,15 +1232,13 @@ async def get_corporate_employees(
                 "company_id": company_id,
                 "role": {"$regex": "^corporate"}
             }).to_list(None)
-            
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
-            # Still restrict to company users, but exclude those with corporate roles
             individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
             filter_query["id"] = {"$in": individual_user_ids}
-        
+
         if status:
             filter_query["is_active"] = status == "active"
-        
+
         if search:
             search_conditions = [
                 {"full_name": {"$regex": search, "$options": "i"}},
@@ -2637,20 +2873,21 @@ async def get_catering_employees(
         company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
         if not company:
             raise HTTPException(status_code=404, detail="Catering şirketi bulunamadı")
-        
+
         # Get ALL users who have ANY relationship with this company
         all_company_roles = await db.role_assignments.find({
             "company_id": company_id
         }).to_list(None)
-        
+
         company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
-        
+
         if not company_user_ids:
             return EmployeeListResponse(users=[], total=0, has_more=False)
-        
+
         # Build filter query - MUST restrict to company users only
+        # Use 'id' field for user lookup (not '_id')
         filter_query = {"id": {"$in": company_user_ids}}
-        
+
         if type == "corporate":
             # Get users with corporate roles in THIS company
             corporate_roles = await db.role_assignments.find({
@@ -2658,7 +2895,6 @@ async def get_catering_employees(
                 "role": {"$regex": "^corporate"},
                 "is_active": True
             }).to_list(None)
-            
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
             filter_query["id"] = {"$in": corporate_user_ids}
         elif type == "individual":
@@ -2667,14 +2903,13 @@ async def get_catering_employees(
                 "company_id": company_id,
                 "role": {"$regex": "^corporate"}
             }).to_list(None)
-            
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
             individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
             filter_query["id"] = {"$in": individual_user_ids}
-        
+
         if status:
             filter_query["is_active"] = status == "active"
-        
+
         if search:
             search_conditions = [
                 {"full_name": {"$regex": search, "$options": "i"}},
@@ -2961,20 +3196,21 @@ async def get_supplier_employees(
         company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
         if not company:
             raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
-        
+
         # Get ALL users who have ANY relationship with this company
         all_company_roles = await db.role_assignments.find({
             "company_id": company_id
         }).to_list(None)
-        
+
         company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
-        
+
         if not company_user_ids:
             return EmployeeListResponse(users=[], total=0, has_more=False)
-        
+
         # Build filter query - MUST restrict to company users only
+        # Use 'id' field for user lookup (not '_id')
         filter_query = {"id": {"$in": company_user_ids}}
-        
+
         if type == "corporate":
             # Get users with corporate roles in THIS company
             corporate_roles = await db.role_assignments.find({
@@ -2982,7 +3218,6 @@ async def get_supplier_employees(
                 "role": {"$regex": "^corporate"},
                 "is_active": True
             }).to_list(None)
-            
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
             filter_query["id"] = {"$in": corporate_user_ids}
         elif type == "individual":
@@ -2991,14 +3226,13 @@ async def get_supplier_employees(
                 "company_id": company_id,
                 "role": {"$regex": "^corporate"}
             }).to_list(None)
-            
             corporate_user_ids = [role["user_id"] for role in corporate_roles]
             individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
             filter_query["id"] = {"$in": individual_user_ids}
-        
+
         if status:
             filter_query["is_active"] = status == "active"
-        
+
         if search:
             search_conditions = [
                 {"full_name": {"$regex": search, "$options": "i"}},
@@ -4378,9 +4612,3 @@ async def create_menu_choice(
 
 # Include router
 app.include_router(api_router)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
-    if redis_available and redis_client:
-        await redis_client.close()

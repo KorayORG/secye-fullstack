@@ -445,7 +445,7 @@ const CorporatePanel = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {dashboardStats.recent_activities.length > 0 ? (
+                      {Array.isArray(dashboardStats.recent_activities) && dashboardStats.recent_activities.length > 0 ? (
                         dashboardStats.recent_activities.map((activity, index) => (
                           <div key={index} className="flex items-center space-x-3">
                             <CheckCircle className="w-5 h-5 text-green-500" />

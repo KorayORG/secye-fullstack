@@ -391,7 +391,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
                     activeTab === 'sent' ? 'bg-orange-50 text-orange-700 border-r-2 border-orange-500' : ''
                   }`}
                 >
-                  <Sent className="w-4 h-4" />
+                  <Send className="w-4 h-4" />
                   <span>Gönderilen</span>
                 </button>
                 <button

@@ -24,14 +24,15 @@ import {
 import EmployeeManagement from './modules/EmployeeManagement';
 import SystemSettings from './modules/SystemSettings';
 import MailSystem from './modules/MailSystem';
-// TODO: Create catering-specific modules
-// import CorporateManagement from './modules/CorporateManagement';
-// import SupplierManagement from './modules/SupplierManagement';
+import CorporateManagement from './modules/CorporateManagement';
+import CorporateDetailPanel from './modules/CorporateDetailPanel';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const CateringPanel = () => {
+  // Corporate detay paneli için state
+  const [selectedCorporate, setSelectedCorporate] = useState(null);
   const { encUserId, encCompanyType, encCompanyId, page } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -325,77 +326,20 @@ const CateringPanel = () => {
 
           {/* Corporate Management Tab */}
           <TabsContent value="corporates">
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Anlaşmalı Firmalar</h2>
-                <p className="text-gray-600">Catering hizmeti verdiğiniz firmaları yönetin</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card className="border-dashed border-2 border-gray-300 hover:border-orange-300 transition-colors cursor-pointer">
-                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-                    <Plus className="w-12 h-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-600 mb-2">Yeni Firma Ekle</h3>
-                    <p className="text-sm text-gray-500">Catering hizmeti vermek istediğiniz firmayı ekleyin</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Örnek Firma A.Ş.</CardTitle>
-                    <CardDescription>Teknoloji Şirketi</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Çalışan Sayısı:</span>
-                        <span className="font-medium">150</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Günlük Ortalama:</span>
-                        <span className="font-medium">120 öğün</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Durum:</span>
-                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2 mt-4">
-                      <Button size="sm" className="flex-1">Detay</Button>
-                      <Button size="sm" variant="outline">Düzenle</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Demo İnşaat Ltd.</CardTitle>
-                    <CardDescription>İnşaat Firması</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Çalışan Sayısı:</span>
-                        <span className="font-medium">80</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Günlük Ortalama:</span>
-                        <span className="font-medium">65 öğün</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Durum:</span>
-                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2 mt-4">
-                      <Button size="sm" className="flex-1">Detay</Button>
-                      <Button size="sm" variant="outline">Düzenle</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            {selectedCorporate ? (
+              <CorporateDetailPanel
+                cateringCompanyId={getCompanyIdFromPath()}
+                corporate={selectedCorporate}
+                onBack={() => setSelectedCorporate(null)}
+              />
+            ) : (
+              <CorporateManagement
+                cateringCompanyId={getCompanyIdFromPath()}
+                onSelectCorporate={setSelectedCorporate}
+              />
+            )}
           </TabsContent>
+
 
           {/* Supplier Management Tab */}
           <TabsContent value="suppliers">
