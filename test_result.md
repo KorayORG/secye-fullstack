@@ -109,7 +109,7 @@ backend:
     implemented: true
     working: false
     file: "server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
@@ -119,6 +119,9 @@ backend:
       - working: false
         agent: "testing"
         comment: "CRITICAL ISSUE: Bulk import API failing with 500 error. GET/PUT/POST role assignment APIs working correctly. Employee listing, filtering, search, update, and role assignment all functional. Only bulk import has server error - needs investigation."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ISSUE PERSISTS: Bulk import API still failing with 500 error despite main agent claiming it was fixed. All other employee management APIs (GET, PUT, POST role assignment) working correctly. Employee listing, filtering, search, update, and role assignment all functional. Only bulk import continues to have server error."
 
   - task: "Shift Management APIs"
     implemented: true
