@@ -408,6 +408,45 @@ class OfferUpdateRequest(BaseModel):
     unit_price: Optional[float] = None
     message: Optional[str] = None
 
+# Application Models
+class ApplicationCreateRequest(BaseModel):
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+    password: str
+
+class ApplicationUpdateRequest(BaseModel):
+    status: Literal['approved', 'rejected']
+    notes: Optional[str] = None
+
+# Menu Models
+class MenuFrameCreateRequest(BaseModel):
+    catering_id: str
+    shift_id: str
+    week_start: str
+    menu_data: Dict[str, Dict[str, Any]]
+
+class MenuChoiceCreateRequest(BaseModel):
+    menu_frame_id: str
+    day: str
+    choice: int
+
+# Rating Models
+class RatingCreateRequest(BaseModel):
+    catering_id: str
+    menu_item_name: str
+    rating: int
+    day_consumed: str
+
+# Suggestion Models
+class SuggestionCreateRequest(BaseModel):
+    title: str
+    content: str
+    is_anonymous: bool = False
+
+class SuggestionVoteRequest(BaseModel):
+    vote_type: Literal['like', 'dislike']
+
 # ===== UTILITY FUNCTIONS =====
 def create_signed_path_segment(payload: Dict[str, Any], expires_in_hours: int = 2) -> str:
     """Create HMAC signed path segment"""
