@@ -16,7 +16,8 @@ import {
   CheckCircle,
   Loader2,
   ChefHat,
-  Truck
+  Truck,
+  Plus
 } from 'lucide-react';
 
 // Import module components (to be created)
