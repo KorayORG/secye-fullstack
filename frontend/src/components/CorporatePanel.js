@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 // Import module components
+import Dashboard from './modules/Dashboard';
 import EmployeeManagement from './modules/EmployeeManagement';
 import ShiftManagement from './modules/ShiftManagement';
 import SystemSettings from './modules/SystemSettings';
