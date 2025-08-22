@@ -487,6 +487,7 @@ const CorporatePanel = () => {
               companyId={getCompanyIdFromPath()} 
               userId={getUserIdFromPath()}
               userRole={userProfile?.role}
+              companyType="corporate"
             />
           </TabsContent>
         </Tabs>
