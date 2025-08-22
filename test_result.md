@@ -169,8 +169,8 @@ backend:
         comment: "Partnership APIs working correctly. GET partnerships returns proper data structure. POST creates partnerships successfully for both catering and supplier types. DELETE removes partnerships correctly. All endpoints accessible and functional. Minor: Duplicate partnership validation not working as expected (allows duplicates instead of returning 400 error)."
 
   - task: "Mail/Messaging APIs"
-    implemented: false
-    working: "NA"
+    implemented: true
+    working: true
     file: "server.py"
     stuck_count: 0
     priority: "high"
@@ -182,6 +182,9 @@ backend:
       - working: "NA"
         agent: "testing"
         comment: "Mail/Messaging APIs NOT IMPLEMENTED. Models exist in server.py but no actual endpoints found. All message-related endpoints return 404. This needs to be implemented by main agent."
+      - working: true
+        agent: "testing"
+        comment: "Mail/Messaging APIs now working correctly! All endpoints implemented and functional: GET messages (inbox/sent/archived) returns proper data structure, POST sends messages successfully, PUT marks messages as read, DELETE removes messages. All tested scenarios passed with realistic data."
 
   - task: "Catering Management APIs"
     implemented: true
