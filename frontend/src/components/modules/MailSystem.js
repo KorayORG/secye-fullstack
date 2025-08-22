@@ -164,7 +164,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
 
   const handleMarkAsRead = async (messageId) => {
     try {
-      await axios.put(`${API}/corporate/${companyId}/messages/${messageId}`, {
+      await axios.put(`${API}/${companyType}/${companyId}/messages/${messageId}`, {
         is_read: true
       });
       
