@@ -396,14 +396,14 @@ const SystemSettings = ({ companyId, userRole, companyType = 'corporate' }) => {
                 {/* Filters */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                   <Select
-                    value={auditFilters.log_type}
-                    onValueChange={(value) => setAuditFilters({ ...auditFilters, log_type: value })}
+                    value={auditFilters.log_type || "all"}
+                    onValueChange={(value) => setAuditFilters({ ...auditFilters, log_type: value === "all" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Aktivite Türü" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tümü</SelectItem>
+                      <SelectItem value="all">Tümü</SelectItem>
                       <SelectItem value="USER_CREATED">Kullanıcı Oluşturma</SelectItem>
                       <SelectItem value="USER_UPDATED">Kullanıcı Güncelleme</SelectItem>
                       <SelectItem value="ROLE_ASSIGNED">Rol Atama</SelectItem>
