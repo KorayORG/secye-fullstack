@@ -465,16 +465,12 @@ const CorporatePanel = () => {
             />
           </TabsContent>
 
+          {/* Catering Companies Tab */}
           <TabsContent value="caterings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Catering Firmaları</CardTitle>
-                <CardDescription>Anlaşmalı catering firmalarını yönetin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Catering yönetimi modülü geliştiriliyor...</p>
-              </CardContent>
-            </Card>
+            <CateringManagement 
+              companyId={getCompanyIdFromPath()} 
+              userRole={userProfile?.role}
+            />
           </TabsContent>
 
           <TabsContent value="mail">
