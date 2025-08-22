@@ -68,10 +68,10 @@ class SecYeAPITester:
             200
         )
 
-    def test_company_search(self, company_type="corporate", query="A-Tech"):
-        """Test company search API"""
+    def test_company_search(self, company_type="corporate", query=""):
+        """Test company search API and collect company IDs"""
         success, response = self.run_test(
-            f"Company Search - {company_type} - {query}",
+            f"Company Search - {company_type} - {query if query else 'all'}",
             "GET",
             "companies/search",
             200,
@@ -79,11 +79,19 @@ class SecYeAPITester:
         )
         
         if success and response.get('companies'):
-            # Store the first company ID for login test
             companies = response['companies']
             if companies:
-                self.company_id = companies[0]['id']
-                print(f"   Found company: {companies[0]['name']} (ID: {self.company_id})")
+                # Store company IDs by type for dashboard tests
+                if company_type == "corporate" and not self.corporate_company_id:
+                    self.corporate_company_id = companies[0]['id']
+                    self.company_id = companies[0]['id']  # For backward compatibility
+                    print(f"   Found corporate company: {companies[0]['name']} (ID: {self.corporate_company_id})")
+                elif company_type == "catering" and not self.catering_company_id:
+                    self.catering_company_id = companies[0]['id']
+                    print(f"   Found catering company: {companies[0]['name']} (ID: {self.catering_company_id})")
+                elif company_type == "supplier" and not self.supplier_company_id:
+                    self.supplier_company_id = companies[0]['id']
+                    print(f"   Found supplier company: {companies[0]['name']} (ID: {self.supplier_company_id})")
         
         return success, response
 
