@@ -457,16 +457,12 @@ const CorporatePanel = () => {
             />
           </TabsContent>
 
+          {/* System Settings Tab */}
           <TabsContent value="system">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sistem Ayarları</CardTitle>
-                <CardDescription>Şirket bilgileri ve sistem konfigürasyonu</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Sistem ayarları modülü geliştiriliyor...</p>
-              </CardContent>
-            </Card>
+            <SystemSettings 
+              companyId={getCompanyIdFromPath()} 
+              userRole={userProfile?.role}
+            />
           </TabsContent>
 
           <TabsContent value="caterings">
