@@ -324,36 +324,206 @@ const SupplierPanel = () => {
             />
           </TabsContent>
 
-          {/* Catering Management Tab (Foundation) */}
+          {/* Catering Company Management Tab */}
           <TabsContent value="caterings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Catering Firma Yönetimi</CardTitle>
-                <CardDescription>Müşteri catering firmalarınızı yönetin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Catering firma yönetimi modülü geliştiriliyor...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Bu modül ile müşteri catering firmalarınızı görüntüleyebilir, sipariş durumlarını takip edebilir ve ilişkilerinizi yönetebilirsiniz.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Catering Firmaları</h2>
+                <p className="text-gray-600">Ürün sattığınız catering firmalarını yönetin</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="border-dashed border-2 border-gray-300 hover:border-orange-300 transition-colors cursor-pointer">
+                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                    <Plus className="w-12 h-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Yeni Müşteri Ekle</h3>
+                    <p className="text-sm text-gray-500">Ürün sattığınız catering firmasını ekleyin</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Lezzet Catering</CardTitle>
+                    <CardDescription>Premium Catering Hizmetleri</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Aylık Sipariş:</span>
+                        <span className="font-medium">₺45.000</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Son Sipariş:</span>
+                        <span className="font-medium">3 gün önce</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Durum:</span>
+                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                      <Button size="sm" className="flex-1">Siparişler</Button>
+                      <Button size="sm" variant="outline">İletişim</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Şef Mutfak Ltd.</CardTitle>
+                    <CardDescription>Kurumsal Catering</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Aylık Sipariş:</span>
+                        <span className="font-medium">₺32.500</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Son Sipariş:</span>
+                        <span className="font-medium">1 hafta önce</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Durum:</span>
+                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-4">
+                      <Button size="sm" className="flex-1">Siparişler</Button>
+                      <Button size="sm" variant="outline">İletişim</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
-          {/* Store Management Tab (Foundation) */}
+          {/* Store Management Tab */}
           <TabsContent value="store">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mağaza Yönetimi</CardTitle>
-                <CardDescription>Ürünlerinizi ve stok durumunuzu yönetin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Mağaza yönetimi modülü geliştiriliyor...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Bu modül ile ürünlerinizi yönetebilir, stok durumunu takip edebilir, fiyat güncellemeleri yapabilir ve sipariş süreçlerini koordine edebilirsiniz.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Mağazam</h2>
+                <p className="text-gray-600">Ürün katalogunuzu ve satış performansınızı yönetin</p>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Quick Stats */}
+                <Card className="lg:col-span-3">
+                  <CardHeader>
+                    <CardTitle>Satış Özeti</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">₺125.500</div>
+                        <div className="text-sm text-blue-800">Bu Ay Toplam</div>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">147</div>
+                        <div className="text-sm text-green-800">Toplam Sipariş</div>
+                      </div>
+                      <div className="bg-orange-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">12</div>
+                        <div className="text-sm text-orange-800">Aktif Müşteri</div>
+                      </div>
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">85%</div>
+                        <div className="text-sm text-purple-800">Stok Durumu</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Product Categories */}
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Ürün Kategorileri</CardTitle>
+                    <CardDescription>En çok satan kategorileriniz</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span>Sebze & Meyve</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div className="bg-green-500 h-2 rounded-full" style={{width: '85%'}}></div>
+                          </div>
+                          <span className="text-sm font-medium">85%</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Et & Protein</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div className="bg-red-500 h-2 rounded-full" style={{width: '72%'}}></div>
+                          </div>
+                          <span className="text-sm font-medium">72%</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Süt Ürünleri</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div className="bg-blue-500 h-2 rounded-full" style={{width: '68%'}}></div>
+                          </div>
+                          <span className="text-sm font-medium">68%</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Bakliyat & Tahıl</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div className="bg-orange-500 h-2 rounded-full" style={{width: '55%'}}></div>
+                          </div>
+                          <span className="text-sm font-medium">55%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Recent Orders */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Son Siparişler</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2">
+                        <div>
+                          <div className="font-medium">Lezzet Catering</div>
+                          <div className="text-sm text-gray-500">Sebze Mix - 25kg</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">₺1.250</div>
+                          <Badge className="bg-green-100 text-green-800">Teslim Edildi</Badge>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <div>
+                          <div className="font-medium">Şef Mutfak</div>
+                          <div className="text-sm text-gray-500">Organik Et - 10kg</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">₺2.800</div>
+                          <Badge className="bg-blue-100 text-blue-800">Hazırlanıyor</Badge>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <div>
+                          <div className="font-medium">Elit Catering</div>
+                          <div className="text-sm text-gray-500">Premium Balık - 5kg</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">₺1.850</div>
+                          <Badge className="bg-orange-100 text-orange-800">Beklemede</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Mail System Tab */}
