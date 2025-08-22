@@ -36,16 +36,23 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [filteredApplications, setFilteredApplications] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [applicationSearchTerm, setApplicationSearchTerm] = useState('');
+  const [applicationFilterStatus, setApplicationFilterStatus] = useState('all');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('individual');
   
   // Dialog states
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
+  const [showApplicationDetailDialog, setShowApplicationDetailDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [viewingApplication, setViewingApplication] = useState(null);
   
   // Form states
   const [editForm, setEditForm] = useState({
