@@ -517,56 +517,101 @@ class SecYeAPITester:
         return all([success1, success2])
     
     def test_mail_messaging_apis(self):
-        """Test Mail/Messaging APIs (Expected to fail as not implemented)"""
+        """Test Mail/Messaging APIs (Now implemented)"""
         if not self.corporate_company_id:
             print("❌ No corporate company ID available for mail tests")
             return False
         
-        print("\n📋 Testing Mail/Messaging APIs (Expected to fail - not implemented)")
+        print("\n📋 Testing Mail/Messaging APIs (Now implemented)")
         
-        # Test 1: GET /api/corporate/{company_id}/messages
+        # Create a test user ID for messaging
+        test_user_id = "test-user-123"
+        
+        # Test 1: GET /api/corporate/{company_id}/messages?user_id={user_id}&type=inbox
         success1, response1 = self.run_test(
-            "Get Corporate Messages",
+            "Get Corporate Messages - Inbox",
             "GET",
             f"corporate/{self.corporate_company_id}/messages",
-            404  # Expected to fail - not implemented
+            200,
+            params={"user_id": test_user_id, "type": "inbox"}
         )
         
-        # Test 2: POST /api/corporate/{company_id}/messages
+        # Test 2: GET /api/corporate/{company_id}/messages?user_id={user_id}&type=sent
+        success2, response2 = self.run_test(
+            "Get Corporate Messages - Sent",
+            "GET",
+            f"corporate/{self.corporate_company_id}/messages",
+            200,
+            params={"user_id": test_user_id, "type": "sent"}
+        )
+        
+        # Test 3: POST /api/corporate/{company_id}/messages (send message)
         message_data = {
-            "to_addresses": ["test@example.com"],
-            "subject": "Test Message",
-            "body": "This is a test message",
-            "labels": ["test"]
+            "to_addresses": ["recipient@company.sy", "another@company.sy"],
+            "subject": "Test Message from API",
+            "body": "This is a test message sent via the messaging API. Testing functionality.",
+            "labels": ["test", "api-test"],
+            "from_user_id": test_user_id
         }
         
-        success2, response2 = self.run_test(
+        success3, response3 = self.run_test(
             "Send Corporate Message",
             "POST",
             f"corporate/{self.corporate_company_id}/messages",
-            404,  # Expected to fail - not implemented
+            200,
             data=message_data
         )
         
-        # Test 3: PUT /api/corporate/{company_id}/messages/{message_id}
-        success3, response3 = self.run_test(
-            "Mark Message as Read",
-            "PUT",
-            f"corporate/{self.corporate_company_id}/messages/test-message-id",
-            404,  # Expected to fail - not implemented
-            data={"is_read": True}
+        # Store message ID for update/delete tests
+        message_id = None
+        if success3 and response3.get('message_id'):
+            message_id = response3['message_id']
+        
+        # Test 4: PUT /api/corporate/{company_id}/messages/{message_id} (mark as read)
+        if message_id:
+            success4, response4 = self.run_test(
+                "Mark Message as Read",
+                "PUT",
+                f"corporate/{self.corporate_company_id}/messages/{message_id}",
+                200,
+                data={"is_read": True}
+            )
+        else:
+            # Use a dummy message ID if we couldn't create one
+            success4, response4 = self.run_test(
+                "Mark Message as Read (dummy ID)",
+                "PUT",
+                f"corporate/{self.corporate_company_id}/messages/dummy-message-id",
+                404  # Should fail with dummy ID
+            )
+        
+        # Test 5: DELETE /api/corporate/{company_id}/messages/{message_id}
+        if message_id:
+            success5, response5 = self.run_test(
+                "Delete Corporate Message",
+                "DELETE",
+                f"corporate/{self.corporate_company_id}/messages/{message_id}",
+                200
+            )
+        else:
+            # Use a dummy message ID if we couldn't create one
+            success5, response5 = self.run_test(
+                "Delete Corporate Message (dummy ID)",
+                "DELETE",
+                f"corporate/{self.corporate_company_id}/messages/dummy-message-id",
+                404  # Should fail with dummy ID
+            )
+        
+        # Test 6: GET messages with archived type
+        success6, response6 = self.run_test(
+            "Get Corporate Messages - Archived",
+            "GET",
+            f"corporate/{self.corporate_company_id}/messages",
+            200,
+            params={"user_id": test_user_id, "type": "archived"}
         )
         
-        # Test 4: DELETE /api/corporate/{company_id}/messages/{message_id}
-        success4, response4 = self.run_test(
-            "Delete Corporate Message",
-            "DELETE",
-            f"corporate/{self.corporate_company_id}/messages/test-message-id",
-            404  # Expected to fail - not implemented
-        )
-        
-        # Return True since we expect these to fail (not implemented)
-        return True
+        return all([success1, success2, success3])
     
     def test_catering_management_apis(self):
         """Test Catering Management APIs"""
