@@ -73,11 +73,16 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
 
   useEffect(() => {
     loadEmployees();
+    loadApplications();
   }, [companyId]);
 
   useEffect(() => {
     filterEmployees();
   }, [employees, searchTerm, filterType, filterStatus]);
+
+  useEffect(() => {
+    filterApplications();
+  }, [applications, applicationSearchTerm, applicationFilterStatus]);
 
   const loadEmployees = async () => {
     setLoading(true);
