@@ -27,7 +27,7 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const SystemSettings = ({ companyId, userRole }) => {
+const SystemSettings = ({ companyId, userRole, companyType = 'corporate' }) => {
   const [loading, setLoading] = useState(true);
   const [companySettings, setCompanySettings] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
