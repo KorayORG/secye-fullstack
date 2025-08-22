@@ -27,7 +27,7 @@ import {
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const EmployeeManagement = ({ companyId, userRole }) => {
+const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) => {
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
