@@ -5,7 +5,7 @@ import json
 import uuid
 
 class SecYeAPITester:
-    def __init__(self, base_url="https://food-tenant.preview.emergentagent.com"):
+    def __init__(self, base_url="https://menuselect-debug.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.tests_run = 0
