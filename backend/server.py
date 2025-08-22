@@ -187,13 +187,17 @@ def create_turkce_slug(text: str) -> str:
     return result
 
 async def get_user_roles_cached(user_id: str, company_id: str) -> List[str]:
-    """Get user roles with Redis caching"""
+    """Get user roles with Redis caching (fallback to direct DB query)"""
     cache_key = f"roles:{user_id}:{company_id}"
     
-    # Try cache first
-    cached_roles = await redis_client.get(cache_key)
-    if cached_roles:
-        return json.loads(cached_roles)
+    # Try cache first (if Redis is available)
+    if redis_available and redis_client:
+        try:
+            cached_roles = await redis_client.get(cache_key)
+            if cached_roles:
+                return json.loads(cached_roles)
+        except Exception:
+            pass  # Fall back to database query
     
     # Query database
     roles = await db.role_assignments.find({
@@ -204,8 +208,12 @@ async def get_user_roles_cached(user_id: str, company_id: str) -> List[str]:
     
     role_list = [role['role'] for role in roles]
     
-    # Cache for 60 seconds
-    await redis_client.setex(cache_key, 60, json.dumps(role_list))
+    # Cache for 60 seconds (if Redis is available)
+    if redis_available and redis_client:
+        try:
+            await redis_client.setex(cache_key, 60, json.dumps(role_list))
+        except Exception:
+            pass  # Cache operation failed, continue without caching
     
     return role_list
 
