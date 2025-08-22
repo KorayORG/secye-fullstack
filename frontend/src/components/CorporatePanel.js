@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -13,8 +14,12 @@ import {
   Mail, 
   BarChart3,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const CorporatePanel = () => {
   const { encUserId, encCompanyType, encCompanyId, page } = useParams();
@@ -22,60 +27,94 @@ const CorporatePanel = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [companyData, setCompanyData] = useState(null);
-  const [userRole, setUserRole] = useState('');
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Decode path segments (simplified - in real implementation would verify HMAC)
+  const decodePathSegment = (encoded) => {
+    try {
+      const [payloadB64] = encoded.split('.');
+      const padding = '='.repeat((4 - payloadB64.length % 4) % 4);
+      const payload = JSON.parse(atob(payloadB64 + padding));
+      return payload;
+    } catch (e) {
+      console.error('Path segment decode error:', e);
+      return null;
+    }
+  };
+
+  const getUserIdFromPath = () => {
+    const decoded = decodePathSegment(encUserId);
+    return decoded?.user_id;
+  };
+
+  const getCompanyIdFromPath = () => {
+    const decoded = decodePathSegment(encCompanyId);
+    return decoded?.company_id;
+  };
+
+  const getCompanyTypeFromPath = () => {
+    const decoded = decodePathSegment(encCompanyType);
+    return decoded?.company_type;
+  };
 
   useEffect(() => {
-    // Simulate path verification and data loading
-    setTimeout(() => {
-      // Mock company data based on company type
-      const mockCompanyData = {
-        corporate: {
-          name: 'A-Tech Yazılım',
-          type: 'Firma',
-          slug: 'a-tech',
-          stats: {
-            individualUsers: 45,
-            corporateUsers: 8,
-            totalPreferences: 234,
-            activeShifts: 2
-          }
-        },
-        catering: {
-          name: 'LezzetSepeti',
-          type: 'Catering',
-          slug: 'lezzetsepeti',
-          stats: {
-            rating: 4.2,
-            servedIndividuals: 156,
-            totalPreferences: 892,
-            partnerCorporates: 12
-          }
-        },
-        supplier: {
-          name: 'TazeMarket Gıda',
-          type: 'Tedarikçi',
-          slug: 'tazemarket',
-          stats: {
-            totalOrders: 67,
-            productVariety: 145,
-            recentOrders: 12,
-            partnerCaterings: 8
-          }
-        }
-      };
-
-      // Mock role verification - in real app this would verify the signed segments
-      const mockRole = 'corporateOwner'; // or catering3, supplier2, etc.
-      
-      setCompanyData(mockCompanyData.corporate); // Default to corporate for now
-      setUserRole(mockRole);
-      setLoading(false);
-    }, 1000);
+    loadData();
   }, [encUserId, encCompanyType, encCompanyId]);
 
-  const getCompanyTypeFromEncoded = () => {
-    // In real implementation, this would decode the signed segment
-    return 'corporate';
+  const loadData = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const userId = getUserIdFromPath();
+      const companyId = getCompanyIdFromPath();
+      const companyType = getCompanyTypeFromPath();
+
+      if (!userId || !companyId || !companyType) {
+        setError('Geçersiz erişim parametreleri');
+        setLoading(false);
+        return;
+      }
+
+      // Load user profile
+      const profileResponse = await axios.get(`${API}/user/profile`, {
+        params: { user_id: userId, company_id: companyId }
+      });
+      setUserProfile(profileResponse.data);
+      setCompanyData(profileResponse.data.company);
+
+      // Load dashboard stats based on company type
+      let dashboardEndpoint;
+      switch (companyType) {
+        case 'corporate':
+          dashboardEndpoint = `${API}/corporate/${companyId}/dashboard`;
+          break;
+        case 'catering':
+          dashboardEndpoint = `${API}/catering/${companyId}/dashboard`;
+          break;
+        case 'supplier':
+          dashboardEndpoint = `${API}/supplier/${companyId}/dashboard`;
+          break;
+        default:
+          throw new Error('Geçersiz şirket tipi');
+      }
+
+      const dashboardResponse = await axios.get(dashboardEndpoint);
+      setDashboardStats(dashboardResponse.data);
+
+    } catch (err) {
+      console.error('Data loading error:', err);
+      if (err.response?.status === 401) {
+        setError('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+      } else if (err.response?.status === 403) {
+        setError('Bu sayfaya erişim yetkiniz bulunmamaktadır.');
+      } else {
+        setError('Veriler yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const navigateToPage = (newPage) => {
@@ -83,7 +122,7 @@ const CorporatePanel = () => {
   };
 
   const getAvailableTabs = () => {
-    const companyType = getCompanyTypeFromEncoded();
+    if (!companyData) return [];
     
     const tabs = {
       corporate: [
@@ -112,14 +151,27 @@ const CorporatePanel = () => {
       ]
     };
 
-    return tabs[companyType] || tabs.corporate;
+    return tabs[companyData.type] || tabs.corporate;
+  };
+
+  const getCompanyTypeLabel = (type) => {
+    const labels = {
+      corporate: 'Firma',
+      catering: 'Catering',
+      supplier: 'Tedarikçi'
+    };
+    return labels[type] || type;
+  };
+
+  const logout = () => {
+    navigate('/login');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Panel yükleniyor...</p>
         </div>
       </div>
@@ -152,6 +204,17 @@ const CorporatePanel = () => {
     );
   }
 
+  if (!companyData || !userProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-600">Veri yüklenemedi</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -163,18 +226,21 @@ const CorporatePanel = () => {
                 <Building2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">{companyData?.name}</h1>
-                <p className="text-sm text-gray-600">{companyData?.type} Paneli</p>
+                <h1 className="text-xl font-semibold text-gray-900">{companyData.name}</h1>
+                <p className="text-sm text-gray-600">{getCompanyTypeLabel(companyData.type)} Paneli</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                {userRole}
-              </Badge>
+              <div className="text-right">
+                <p className="text-sm font-medium">{userProfile.full_name}</p>
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                  {userProfile.role}
+                </Badge>
+              </div>
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate('/login')}
+                onClick={logout}
               >
                 Çıkış
               </Button>
@@ -195,88 +261,187 @@ const CorporatePanel = () => {
             ))}
           </TabsList>
 
-          {/* General Tab */}
+          {/* General Tab - Real Dashboard */}
           <TabsContent value="general" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Bireysel Hesaplar</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{companyData?.stats?.individualUsers || 0}</div>
-                  <p className="text-xs text-muted-foreground">Aktif kullanıcı</p>
-                </CardContent>
-              </Card>
+            {dashboardStats && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {companyData.type === 'corporate' && (
+                    <>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Bireysel Hesaplar</CardTitle>
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.individual_users}</div>
+                          <p className="text-xs text-muted-foreground">Aktif kullanıcı</p>
+                        </CardContent>
+                      </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Kurumsal Hesaplar</CardTitle>
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{companyData?.stats?.corporateUsers || 0}</div>
-                  <p className="text-xs text-muted-foreground">Yönetici kullanıcı</p>
-                </CardContent>
-              </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Kurumsal Hesaplar</CardTitle>
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.corporate_users}</div>
+                          <p className="text-xs text-muted-foreground">Yönetici kullanıcı</p>
+                        </CardContent>
+                      </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Son 24h Tercih</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{companyData?.stats?.totalPreferences || 0}</div>
-                  <p className="text-xs text-muted-foreground">Menü seçimi</p>
-                </CardContent>
-              </Card>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Toplam Tercih</CardTitle>
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.total_preferences}</div>
+                          <p className="text-xs text-muted-foreground">Menü seçimi</p>
+                        </CardContent>
+                      </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Aktif Vardiyalar</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{companyData?.stats?.activeShifts || 0}</div>
-                  <p className="text-xs text-muted-foreground">Tanımlı vardiya</p>
-                </CardContent>
-              </Card>
-            </div>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Aktif Vardiyalar</CardTitle>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.active_shifts}</div>
+                          <p className="text-xs text-muted-foreground">Tanımlı vardiya</p>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Son Aktiviteler</CardTitle>
-                <CardDescription>Sistem genelindeki son hareketler</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Yeni menü yüklendi</p>
-                      <p className="text-xs text-gray-500">LezzetSepeti tarafından - 2 saat önce</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Users className="w-5 h-5 text-blue-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">5 yeni çalışan eklendi</p>
-                      <p className="text-xs text-gray-500">Toplu yükleme ile - 1 gün önce</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Clock className="w-5 h-5 text-orange-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Vardiya güncellendi</p>
-                      <p className="text-xs text-gray-500">Akşam vardiyası saatleri - 2 gün önce</p>
-                    </div>
-                  </div>
+                  {companyData.type === 'catering' && (
+                    <>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Şirket Puanı</CardTitle>
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.rating.toFixed(1)}</div>
+                          <p className="text-xs text-muted-foreground">5 üzerinden</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Hizmet Edilen</CardTitle>
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.served_individuals}</div>
+                          <p className="text-xs text-muted-foreground">Bireysel kullanıcı</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Toplam Tercih</CardTitle>
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.total_preferences}</div>
+                          <p className="text-xs text-muted-foreground">Menü seçimi</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Partner Firmalar</CardTitle>
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.partner_corporates}</div>
+                          <p className="text-xs text-muted-foreground">Anlaşmalı şirket</p>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
+
+                  {companyData.type === 'supplier' && (
+                    <>
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Toplam Sipariş</CardTitle>
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.total_orders}</div>
+                          <p className="text-xs text-muted-foreground">Satır adedi</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Ürün Çeşidi</CardTitle>
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.product_variety}</div>
+                          <p className="text-xs text-muted-foreground">Stok çeşit sayısı</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Son 30 Gün</CardTitle>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.recent_orders}</div>
+                          <p className="text-xs text-muted-foreground">Yeni sipariş</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Partner Catering</CardTitle>
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-2xl font-bold">{dashboardStats.partner_caterings}</div>
+                          <p className="text-xs text-muted-foreground">Müşteri sayısı</p>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Recent Activities */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Son Aktiviteler</CardTitle>
+                    <CardDescription>Son sistem hareketleri</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {dashboardStats.recent_activities.length > 0 ? (
+                        dashboardStats.recent_activities.map((activity, index) => (
+                          <div key={index} className="flex items-center space-x-3">
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{activity.description}</p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(activity.timestamp).toLocaleString('tr-TR')}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Henüz aktivite bulunmamaktadır.</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </TabsContent>
 
-          {/* Other tabs - placeholder content */}
+          {/* Other tabs - placeholder content for now */}
           <TabsContent value="employees">
             <Card>
               <CardHeader>
@@ -284,7 +449,7 @@ const CorporatePanel = () => {
                 <CardDescription>Bireysel ve kurumsal hesapları yönetin</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Çalışan yönetimi modülü yakında eklenecek...</p>
+                <p className="text-gray-600">Çalışan yönetimi modülü geliştiriliyor...</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -296,7 +461,7 @@ const CorporatePanel = () => {
                 <CardDescription>Vardiyaları oluşturun ve düzenleyin</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Vardiya yönetimi modülü yakında eklenecek...</p>
+                <p className="text-gray-600">Vardiya yönetimi modülü geliştiriliyor...</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -308,7 +473,7 @@ const CorporatePanel = () => {
                 <CardDescription>Şirket bilgileri ve sistem konfigürasyonu</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Sistem ayarları modülü yakında eklenecek...</p>
+                <p className="text-gray-600">Sistem ayarları modülü geliştiriliyor...</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -320,7 +485,7 @@ const CorporatePanel = () => {
                 <CardDescription>Anlaşmalı catering firmalarını yönetin</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Catering yönetimi modülü yakında eklenecek...</p>
+                <p className="text-gray-600">Catering yönetimi modülü geliştiriliyor...</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -332,7 +497,7 @@ const CorporatePanel = () => {
                 <CardDescription>Kurumsal e-posta sistemi</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Mail sistemi modülü yakında eklenecek...</p>
+                <p className="text-gray-600">Mail sistemi modülü geliştiriliyor...</p>
               </CardContent>
             </Card>
           </TabsContent>
