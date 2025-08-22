@@ -851,6 +851,157 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Application Detail Dialog */}
+      <Dialog open={showApplicationDetailDialog} onOpenChange={setShowApplicationDetailDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Başvuru Detayları</DialogTitle>
+            <DialogDescription>
+              Kurumsal hesap başvurusunu inceleyin ve karar verin
+            </DialogDescription>
+          </DialogHeader>
+          {viewingApplication && (
+            <div className="space-y-6">
+              {/* Applicant Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Başvuran Bilgileri</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Ad Soyad</label>
+                    <p className="text-sm">{viewingApplication.applicant_full_name}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Telefon</label>
+                    <p className="text-sm">{viewingApplication.applicant_phone}</p>
+                  </div>
+                  {viewingApplication.applicant_email && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">E-posta</label>
+                      <p className="text-sm">{viewingApplication.applicant_email}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Başvuru Tarihi</label>
+                    <p className="text-sm">{new Date(viewingApplication.created_at).toLocaleDateString('tr-TR')}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Status */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Mevcut Durum</h3>
+                <Badge className={getStatusBadgeColor(viewingApplication.status)}>
+                  {getStatusDisplayName(viewingApplication.status)}
+                </Badge>
+                {viewingApplication.notes && (
+                  <div className="mt-2">
+                    <label className="text-sm font-medium text-gray-600">Notlar</label>
+                    <p className="text-sm text-gray-800">{viewingApplication.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Decision Form - only show if pending */}
+              {viewingApplication.status === 'pending' && canManageEmployees() && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Karar Verin</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Karar</label>
+                      <Select value={applicationDecision.status} onValueChange={(value) => setApplicationDecision({...applicationDecision, status: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Karar seçin..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="approved">Onayla</SelectItem>
+                          <SelectItem value="rejected">Reddet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Notlar (İsteğe bağlı)</label>
+                      <Textarea
+                        value={applicationDecision.notes}
+                        onChange={(e) => setApplicationDecision({...applicationDecision, notes: e.target.value})}
+                        placeholder="Karar ile ilgili notlarınızı yazın..."
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setShowApplicationDetailDialog(false)}>
+              Kapat
+            </Button>
+            {viewingApplication?.status === 'pending' && canManageEmployees() && applicationDecision.status && (
+              <Button 
+                onClick={handleApplicationDecision} 
+                disabled={loading}
+                className={applicationDecision.status === 'approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {applicationDecision.status === 'approved' ? 'Onayla' : 'Reddet'}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+      {/* Edit Employee Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Çalışan Düzenle</DialogTitle>
+            <DialogDescription>
+              Çalışan bilgilerini güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Ad Soyad</label>
+              <Input
+                value={editForm.full_name}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                placeholder="Ad Soyad"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">E-posta</label>
+              <Input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="E-posta adresi"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={editForm.is_active}
+                onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+              />
+              <label htmlFor="is_active" className="text-sm font-medium">Aktif</label>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              İptal
+            </Button>
+            <Button onClick={handleUpdateEmployee} disabled={loading}>
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Güncelle
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
