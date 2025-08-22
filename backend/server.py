@@ -2709,7 +2709,8 @@ async def get_supplier_messages(
 @api_router.post("/supplier/{company_id}/messages")
 async def send_supplier_message(
     company_id: str,
-    request: MailCreateRequest
+    request: MailCreateRequest,
+    from_user_id: str = "system"
 ):
     """Send a message within supplier network"""
     try:
@@ -2731,11 +2732,12 @@ async def send_supplier_message(
         message_id = str(uuid.uuid4())
         message = {
             "id": message_id,
-            "from_user_id": request.from_user_id,
-            "from_company_id": request.from_company_id,
-            "from_address": request.from_address or f"{request.from_user_id}@supplier.sy",
+            "from_user_id": from_user_id,
+            "from_company_id": company_id,
+            "from_address": f"{from_user_id}@supplier.sy",
             "to_user_ids": to_user_ids,
             "to_addresses": request.to_addresses,
+            "to_company_ids": [company_id],
             "subject": request.subject,
             "body": request.body,
             "labels": request.labels or [],
