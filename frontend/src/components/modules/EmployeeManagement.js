@@ -150,6 +150,26 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     setFilteredEmployees(filtered);
   };
 
+  const filterApplications = () => {
+    let filtered = applications;
+
+    // Filter by search term
+    if (applicationSearchTerm) {
+      filtered = filtered.filter(app => 
+        app.applicant_full_name.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
+        app.applicant_phone.includes(applicationSearchTerm) ||
+        (app.applicant_email && app.applicant_email.toLowerCase().includes(applicationSearchTerm.toLowerCase()))
+      );
+    }
+
+    // Filter by status
+    if (applicationFilterStatus !== 'all') {
+      filtered = filtered.filter(app => app.status === applicationFilterStatus);
+    }
+
+    setFilteredApplications(filtered);
+  };
+
   const handleEditEmployee = (employee) => {
     setEditingEmployee(employee);
     setEditForm({
