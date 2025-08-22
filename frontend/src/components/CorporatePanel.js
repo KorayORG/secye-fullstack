@@ -449,16 +449,12 @@ const CorporatePanel = () => {
             />
           </TabsContent>
 
+          {/* Shift Management Tab */}
           <TabsContent value="shifts">
-            <Card>
-              <CardHeader>
-                <CardTitle>Vardiya Yönetimi</CardTitle>
-                <CardDescription>Vardiyaları oluşturun ve düzenleyin</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Vardiya yönetimi modülü geliştiriliyor...</p>
-              </CardContent>
-            </Card>
+            <ShiftManagement 
+              companyId={getCompanyIdFromPath()} 
+              userRole={userProfile?.role}
+            />
           </TabsContent>
 
           <TabsContent value="system">
