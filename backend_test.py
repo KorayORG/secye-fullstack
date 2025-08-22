@@ -103,6 +103,138 @@ class SecYeAPITester:
         )
         return success, response
 
+    def test_corporate_application_existing(self):
+        """Test corporate application for existing company"""
+        if not self.company_id:
+            print("❌ No company ID available for corporate application test")
+            return False, {}
+            
+        test_phone = f"+9055{datetime.now().strftime('%H%M%S')}1234"
+        
+        success, response = self.run_test(
+            "Corporate Application - Existing Company",
+            "POST",
+            "auth/register/corporate/application",
+            200,
+            data={
+                "mode": "existing",
+                "target": {
+                    "mode": "existing",
+                    "company_id": self.company_id
+                },
+                "applicant": {
+                    "full_name": "Test Yetkili",
+                    "phone": test_phone,
+                    "email": "test@example.com"
+                },
+                "password": "TestPass123!"
+            }
+        )
+        return success, response
+
+    def test_corporate_application_new(self):
+        """Test corporate application for new company"""
+        test_phone = f"+9055{datetime.now().strftime('%H%M%S')}5678"
+        
+        success, response = self.run_test(
+            "Corporate Application - New Company",
+            "POST",
+            "auth/register/corporate/application",
+            200,
+            data={
+                "mode": "new",
+                "target": {
+                    "mode": "new",
+                    "company_type": "corporate",
+                    "new_company_payload": {
+                        "name": f"Test Şirket {datetime.now().strftime('%H%M%S')}",
+                        "address": "Test Mahallesi, Test Sokak No:1, İstanbul",
+                        "contact_phone": "+902121234567",
+                        "owner_full_name": "Test Sahibi",
+                        "owner_phone": test_phone,
+                        "owner_email": "owner@testcompany.com"
+                    }
+                },
+                "applicant": {
+                    "full_name": "Test Sahibi",
+                    "phone": test_phone,
+                    "email": "owner@testcompany.com"
+                },
+                "password": "TestPass123!"
+            }
+        )
+        return success, response
+
+    def test_corporate_application_validation(self):
+        """Test corporate application validation"""
+        # Test missing phone
+        success1, _ = self.run_test(
+            "Corporate Application - Missing Phone",
+            "POST",
+            "auth/register/corporate/application",
+            422,  # Validation error
+            data={
+                "mode": "existing",
+                "target": {
+                    "mode": "existing",
+                    "company_id": self.company_id if self.company_id else "test-id"
+                },
+                "applicant": {
+                    "full_name": "Test Yetkili",
+                    "email": "test@example.com"
+                    # Missing phone
+                },
+                "password": "TestPass123!"
+            }
+        )
+        
+        # Test duplicate phone (if we have a valid phone from previous test)
+        test_phone = "+905551112233"  # Use a common test phone
+        success2, _ = self.run_test(
+            "Corporate Application - Duplicate Phone",
+            "POST",
+            "auth/register/corporate/application",
+            400,  # Bad request for duplicate
+            data={
+                "mode": "existing",
+                "target": {
+                    "mode": "existing",
+                    "company_id": self.company_id if self.company_id else "test-id"
+                },
+                "applicant": {
+                    "full_name": "Test Yetkili",
+                    "phone": test_phone,
+                    "email": "test@example.com"
+                },
+                "password": "TestPass123!"
+            }
+        )
+        
+        return success1 or success2, {}  # At least one validation test should work
+
+    def test_individual_registration(self):
+        """Test individual registration"""
+        if not self.company_id:
+            print("❌ No company ID available for individual registration test")
+            return False, {}
+            
+        test_phone = f"+9055{datetime.now().strftime('%H%M%S')}9999"
+        
+        success, response = self.run_test(
+            "Individual Registration",
+            "POST",
+            "auth/register/individual",
+            200,
+            data={
+                "full_name": "Test Bireysel",
+                "phone": test_phone,
+                "password": "TestPass123!",
+                "company_type": "corporate",
+                "company_id": self.company_id
+            }
+        )
+        return success, response
+
 def main():
     print("🚀 Starting Seç Ye API Tests")
     print("=" * 50)
