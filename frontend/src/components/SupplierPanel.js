@@ -360,6 +360,7 @@ const SupplierPanel = () => {
               companyId={getCompanyIdFromPath()} 
               userId={getUserIdFromPath()}
               userRole={userProfile?.role}
+              companyType="supplier"
             />
           </TabsContent>
         </Tabs>
