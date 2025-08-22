@@ -131,6 +131,74 @@ const LoginPage = () => {
     }
   };
 
+  const handleCorporateApplication = async () => {
+    setLoading(true);
+    setError('');
+
+    if (registerData.password !== registerData.confirmPassword) {
+      setError('Şifreler eşleşmiyor');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const applicationData = {
+        mode: registerData.applicationMode,
+        applicant: {
+          full_name: registerData.fullName,
+          phone: registerData.phone,
+          email: registerData.email
+        },
+        password: registerData.password
+      };
+
+      if (registerData.applicationMode === 'existing') {
+        applicationData.target = {
+          mode: 'existing',
+          company_id: registerData.companyId
+        };
+      } else {
+        applicationData.target = {
+          mode: 'new',
+          company_type: registerData.companyType,
+          new_company_payload: {
+            name: registerData.newCompanyName,
+            address: registerData.newCompanyAddress,
+            contact_phone: registerData.newCompanyPhone,
+            owner_full_name: registerData.fullName,
+            owner_phone: registerData.phone,
+            owner_email: registerData.email
+          }
+        };
+      }
+
+      const response = await axios.post(`${API}/auth/register/corporate/application`, applicationData);
+
+      if (response.data.success) {
+        setSuccess('Kurumsal hesap başvurunuz alındı! Değerlendirme sonrası size bilgi verilecektir.');
+        setActiveTab('corporate');
+      }
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Başvuru işlemi başarısız');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isApplicationFormValid = () => {
+    if (!registerData.applicationMode || !registerData.fullName || !registerData.phone || 
+        !registerData.email || !registerData.password || !registerData.confirmPassword) {
+      return false;
+    }
+
+    if (registerData.applicationMode === 'existing') {
+      return registerData.companyType && registerData.companyId;
+    } else {
+      return registerData.companyType && registerData.newCompanyName && 
+             registerData.newCompanyAddress && registerData.newCompanyPhone;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
