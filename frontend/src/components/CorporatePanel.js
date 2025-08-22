@@ -84,7 +84,8 @@ const CorporatePanel = () => {
   };
 
   useEffect(() => {
-    loadData();
+    // Commented out for testing
+    // loadData();
   }, [encUserId, encCompanyType, encCompanyId]);
 
   const loadData = async () => {
