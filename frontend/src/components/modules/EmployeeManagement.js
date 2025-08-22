@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Textarea } from '../ui/textarea';
 import { 
   Users, 
   Plus, 
