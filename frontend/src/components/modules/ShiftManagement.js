@@ -114,8 +114,23 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
     setError('');
     
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/shifts`);
-      setShifts(response.data.shifts || []);
+      const response = await axios.get(`${API}/${companyType}/${companyId}/shifts`, {
+        params: {
+          limit: 100
+        }
+      });
+      
+      const shiftsData = response.data.shifts || [];
+      setShifts(shiftsData);
+      
+      // Calculate stats
+      const activeShifts = shiftsData.filter(shift => shift.is_active).length;
+      setShiftStats({
+        total_shifts: shiftsData.length,
+        active_shifts: activeShifts,
+        total_employees_assigned: shiftsData.reduce((sum, shift) => sum + (shift.assigned_employees || 0), 0)
+      });
+      
     } catch (err) {
       console.error('Shift loading error:', err);
       setError('Vardiyalar yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
