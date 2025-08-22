@@ -131,7 +131,7 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     setSuccess('');
 
     try {
-      await axios.put(`${API}/corporate/${companyId}/employees/${editingEmployee.id}`, editForm);
+      await axios.put(`${API}/${companyType}/${companyId}/employees/${editingEmployee.id}`, editForm);
       
       setSuccess('Çalışan bilgileri güncellendi');
       setShowEditDialog(false);
