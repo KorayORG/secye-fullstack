@@ -160,7 +160,7 @@ backend:
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Mail/messaging system APIs already implemented in backend. Requires frontend integration testing."
+        comment: "Mail/messaging system APIs just implemented in backend. Added GET/POST/PUT/DELETE endpoints for corporate messaging system."
       - working: "NA"
         agent: "testing"
         comment: "Mail/Messaging APIs NOT IMPLEMENTED. Models exist in server.py but no actual endpoints found. All message-related endpoints return 404. This needs to be implemented by main agent."
