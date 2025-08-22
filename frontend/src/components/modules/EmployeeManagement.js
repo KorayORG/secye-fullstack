@@ -483,6 +483,326 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
           </TabsTrigger>
         </TabsList>
 
+        {/* Individual Employees Tab */}
+        <TabsContent value="individual" className="space-y-6">
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                    <Input
+                      placeholder="Ad, telefon veya e-posta ile ara..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Durum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Durumlar</SelectItem>
+                    <SelectItem value="active">Aktif</SelectItem>
+                    <SelectItem value="inactive">Pasif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Individual Employee List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="w-5 h-5 mr-2" />
+                Bireysel Hesaplar ({employees.filter(emp => !emp.role || emp.role === 'individual').length})
+              </CardTitle>
+              <CardDescription>
+                Şirketinizdeki bireysel kullanıcıları yönetin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {employees.filter(emp => !emp.role || emp.role === 'individual').length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Henüz bireysel kullanıcı bulunmamaktadır</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {employees.filter(emp => !emp.role || emp.role === 'individual').map((employee) => (
+                    <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          employee.is_active ? 'bg-green-100' : 'bg-gray-100'
+                        }`}>
+                          {employee.is_active ? (
+                            <UserCheck className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <UserX className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{employee.full_name}</h4>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <span>{employee.phone}</span>
+                            {employee.email && <span>• {employee.email}</span>}
+                          </div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge className="bg-gray-100 text-gray-800">
+                              Bireysel Kullanıcı
+                            </Badge>
+                            <Badge variant={employee.is_active ? "default" : "secondary"}>
+                              {employee.is_active ? "Aktif" : "Pasif"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {canManageEmployees() && (
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditEmployee(employee)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Corporate Employees Tab */}
+        <TabsContent value="corporate" className="space-y-6">
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                    <Input
+                      placeholder="Ad, telefon veya e-posta ile ara..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Durum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Durumlar</SelectItem>
+                    <SelectItem value="active">Aktif</SelectItem>
+                    <SelectItem value="inactive">Pasif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Corporate Employee List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <UserCheck className="w-5 h-5 mr-2" />
+                Kurumsal Hesaplar ({employees.filter(emp => emp.role && emp.role.includes(companyType) && emp.role !== 'individual').length})
+              </CardTitle>
+              <CardDescription>
+                Şirketinizdeki yönetici ve kurumsal kullanıcıları yönetin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {employees.filter(emp => emp.role && emp.role.includes(companyType) && emp.role !== 'individual').length === 0 ? (
+                <div className="text-center py-8">
+                  <UserCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Henüz kurumsal kullanıcı bulunmamaktadır</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {employees.filter(emp => emp.role && emp.role.includes(companyType) && emp.role !== 'individual').map((employee) => (
+                    <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          employee.is_active ? 'bg-green-100' : 'bg-gray-100'
+                        }`}>
+                          {employee.is_active ? (
+                            <UserCheck className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <UserX className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{employee.full_name}</h4>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <span>{employee.phone}</span>
+                            {employee.email && <span>• {employee.email}</span>}
+                          </div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge className={getRoleBadgeColor(employee.role)}>
+                              {getRoleDisplayName(employee.role)}
+                            </Badge>
+                            <Badge variant={employee.is_active ? "default" : "secondary"}>
+                              {employee.is_active ? "Aktif" : "Pasif"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {canManageEmployees() && (
+                        <div className="flex items-center space-x-2">
+                          <Select 
+                            value={employee.role} 
+                            onValueChange={(value) => handleRoleUpdate(employee.id, value)}
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="individual">Bireysel</SelectItem>
+                              <SelectItem value={`${companyType}1`}>Çalışan</SelectItem>
+                              <SelectItem value={`${companyType}2`}>Alt Düzey Yönetici</SelectItem>
+                              <SelectItem value={`${companyType}3`}>Orta Düzey Yönetici</SelectItem>
+                              <SelectItem value={`${companyType}4`}>Üst Düzey Yönetici</SelectItem>
+                              {(userRole?.includes('Owner')) && (
+                                <SelectItem value={`${companyType}Owner`}>Şirket Sahibi</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditEmployee(employee)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Applications Tab */}
+        <TabsContent value="applications" className="space-y-6">
+          {/* Application Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                    <Input
+                      placeholder="Başvuranın adı, telefon veya e-posta ile ara..."
+                      value={applicationSearchTerm}
+                      onChange={(e) => setApplicationSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <Select value={applicationFilterStatus} onValueChange={setApplicationFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Durum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Başvurular</SelectItem>
+                    <SelectItem value="pending">Bekleyen</SelectItem>
+                    <SelectItem value="approved">Onaylandı</SelectItem>
+                    <SelectItem value="rejected">Reddedildi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Applications List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FileText className="w-5 h-5 mr-2" />
+                Kurumsal Hesap Başvuruları ({filteredApplications.length})
+              </CardTitle>
+              <CardDescription>
+                Şirketinize kurumsal hesap açmak için yapılan başvuruları yönetin
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredApplications.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    {applications.length === 0 ? 'Henüz başvuru bulunmamaktadır' : 'Filtreye uygun başvuru bulunamadı'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredApplications.map((application) => (
+                    <div key={application.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          application.status === 'pending' ? 'bg-yellow-100' :
+                          application.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                        }`}>
+                          {application.status === 'pending' ? (
+                            <Clock className="w-5 h-5 text-yellow-600" />
+                          ) : application.status === 'approved' ? (
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <AlertTriangle className="w-5 h-5 text-red-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{application.applicant_full_name}</h4>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <span>{application.applicant_phone}</span>
+                            {application.applicant_email && <span>• {application.applicant_email}</span>}
+                          </div>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge className={getStatusBadgeColor(application.status)}>
+                              {getStatusDisplayName(application.status)}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {new Date(application.created_at).toLocaleDateString('tr-TR')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {canManageEmployees() && (
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewApplication(application)}
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            Detay
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
       {/* Edit Employee Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
