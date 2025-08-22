@@ -19,6 +19,10 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminPanel />} />
+          {/* Test routes for development */}
+          <Route path="/corporate" element={<CorporatePanel />} />
+          <Route path="/catering" element={<CateringPanel />} />
+          <Route path="/supplier" element={<SupplierPanel />} />
           <Route path="/:encUserId/:encCompanyType/:encCompanyId/:page" element={<PanelRouter />} />
           <Route path="/app/*" element={<IndividualPanel />} />
         </Routes>
