@@ -473,16 +473,13 @@ const CorporatePanel = () => {
             />
           </TabsContent>
 
+          {/* Mail System Tab */}
           <TabsContent value="mail">
-            <Card>
-              <CardHeader>
-                <CardTitle>Site İçi Mail</CardTitle>
-                <CardDescription>Kurumsal e-posta sistemi</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Mail sistemi modülü geliştiriliyor...</p>
-              </CardContent>
-            </Card>
+            <MailSystem 
+              companyId={getCompanyIdFromPath()} 
+              userId={getUserIdFromPath()}
+              userRole={userProfile?.role}
+            />
           </TabsContent>
         </Tabs>
       </main>
