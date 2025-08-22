@@ -2385,7 +2385,8 @@ async def get_catering_messages(
 @api_router.post("/catering/{company_id}/messages")
 async def send_catering_message(
     company_id: str,
-    request: MailCreateRequest
+    request: MailCreateRequest,
+    from_user_id: str = "system"
 ):
     """Send a message within catering network"""
     try:
@@ -2407,16 +2408,17 @@ async def send_catering_message(
         message_id = str(uuid.uuid4())
         message = {
             "id": message_id,
-            "from_user_id": request.from_user_id,
-            "from_company_id": request.from_company_id,
-            "from_address": request.from_address or f"{request.from_user_id}@catering.sy",
+            "from_user_id": from_user_id,
+            "from_company_id": company_id,
+            "from_address": f"{from_user_id}@catering.sy",
             "to_user_ids": to_user_ids,
             "to_addresses": request.to_addresses,
+            "to_company_ids": [company_id],
             "subject": request.subject,
             "body": request.body,
             "labels": request.labels or [],
             "read_by": [],
-            "attachments": request.attachments or [],
+            "attachments": [],
             "created_at": datetime.now(timezone.utc)
         }
         
@@ -2427,7 +2429,7 @@ async def send_catering_message(
             "id": str(uuid.uuid4()),
             "type": "MAIL_SENT",
             "company_id": company_id,
-            "actor_id": request.from_user_id,
+            "actor_id": from_user_id,
             "meta": {
                 "message_id": message_id,
                 "subject": request.subject,
