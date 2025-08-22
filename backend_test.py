@@ -825,13 +825,13 @@ def main():
         print("\n📋 Test 5: System Settings APIs")
         settings_success = tester.test_system_settings_apis()
         
-        # Test 6: Mail/Messaging APIs (Expected to fail)
+        # Test 6: Mail/Messaging APIs
         print("\n📋 Test 6: Mail/Messaging APIs")
         mail_success = tester.test_mail_messaging_apis()
         
-        # Test 7: Catering Management APIs
-        print("\n📋 Test 7: Catering Management APIs")
-        catering_success = tester.test_catering_management_apis()
+        # Test 7: Partnership APIs
+        print("\n📋 Test 7: Partnership APIs")
+        partnership_success = tester.test_partnership_apis()
         
         # Test 8: Error Handling and Edge Cases
         print("\n📋 Test 8: Error Handling and Edge Cases")
