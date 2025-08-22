@@ -137,6 +137,11 @@ const CateringManagement = ({ companyId, userRole }) => {
     }
   };
 
+  const handleViewCateringDetail = (catering) => {
+    // TODO: Implement catering detail view functionality
+    console.log('View catering detail:', catering);
+  };
+
   const getPartnershipStatus = (cateringId) => {
     return partnerships.find(p => p.catering_id === cateringId);
   };
