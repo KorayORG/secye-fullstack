@@ -311,9 +311,35 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
       'corporate3': 'Orta Düzey Yönetici',
       'corporate2': 'Alt Düzey Yönetici',
       'corporate1': 'Çalışan',
+      'cateringOwner': 'Catering Sahibi',
+      'catering4': 'Üst Düzey Yönetici',
+      'catering3': 'Orta Düzey Yönetici', 
+      'catering2': 'Alt Düzey Yönetici',
+      'catering1': 'Çalışan',
+      'supplierOwner': 'Tedarikçi Sahibi',
+      'supplier4': 'Üst Düzey Yönetici',
+      'supplier3': 'Orta Düzey Yönetici',
+      'supplier2': 'Alt Düzey Yönetici',
+      'supplier1': 'Çalışan',
       'individual': 'Bireysel Kullanıcı'
     };
     return roleNames[role] || role;
+  };
+
+  const getStatusDisplayName = (status) => {
+    const statusNames = {
+      'pending': 'Bekleyen',
+      'approved': 'Onaylandı',
+      'rejected': 'Reddedildi'
+    };
+    return statusNames[status] || status;
+  };
+
+  const getStatusBadgeColor = (status) => {
+    if (status === 'approved') return 'bg-green-100 text-green-800';
+    if (status === 'rejected') return 'bg-red-100 text-red-800';
+    if (status === 'pending') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   const getRoleBadgeColor = (role) => {
