@@ -288,6 +288,38 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
     return days.map(d => dayNames[d]).join(', ');
   };
 
+  const getDayBadges = (days) => {
+    return days.sort().map(day => (
+      <Badge key={day} variant="secondary" className="text-xs">
+        {dayNames[day]}
+      </Badge>
+    ));
+  };
+
+  const formatTime = (time) => {
+    return time ? time.slice(0, 5) : '';
+  };
+
+  const calculateShiftDuration = (startTime, endTime) => {
+    if (!startTime || !endTime) return '';
+    
+    const start = new Date(`2000-01-01T${startTime}:00`);
+    const end = new Date(`2000-01-01T${endTime}:00`);
+    
+    let diff = end.getTime() - start.getTime();
+    if (diff < 0) diff += 24 * 60 * 60 * 1000; // Handle overnight shifts
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}s ${minutes}dk`;
+  };
+
+  const getShiftStatusColor = (shift) => {
+    if (!shift.is_active) return 'bg-gray-100 text-gray-800';
+    return 'bg-green-100 text-green-800';
+  };
+
   const formatTime = (timeStr) => {
     return timeStr ? timeStr.substring(0, 5) : '';
   };
