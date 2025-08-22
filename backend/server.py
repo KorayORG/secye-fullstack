@@ -135,6 +135,37 @@ class LoginResponse(BaseModel):
     redirect_url: Optional[str] = None
     message: str
 
+# Corporate Dashboard Models
+class CorporateDashboardStats(BaseModel):
+    individual_users: int
+    corporate_users: int
+    total_preferences: int
+    active_shifts: int
+    recent_activities: List[Dict[str, Any]]
+
+class CateringDashboardStats(BaseModel):
+    rating: float
+    served_individuals: int
+    total_preferences: int
+    partner_corporates: int
+    recent_activities: List[Dict[str, Any]]
+
+class SupplierDashboardStats(BaseModel):
+    total_orders: int
+    product_variety: int
+    recent_orders: int
+    partner_caterings: int
+    recent_activities: List[Dict[str, Any]]
+
+class UserProfile(BaseModel):
+    id: str
+    full_name: str
+    phone: str
+    email: Optional[str]
+    company: Dict[str, Any]
+    role: str
+    is_active: bool
+
 class CompanySearchResponse(BaseModel):
     companies: List[Dict[str, Any]]
     has_more: bool
