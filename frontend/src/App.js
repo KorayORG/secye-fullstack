@@ -19,7 +19,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/:encUserId/:encCompanyType/:encCompanyId/:page" element={<CorporatePanel />} />
+          <Route path="/:encUserId/:encCompanyType/:encCompanyId/:page" element={<PanelRouter />} />
           <Route path="/app/*" element={<IndividualPanel />} />
         </Routes>
       </BrowserRouter>
