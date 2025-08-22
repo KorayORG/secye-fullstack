@@ -13,7 +13,6 @@ import {
   Plus, 
   Send,
   Inbox,
-  Sent,
   Archive,
   Trash2,
   Star,
