@@ -4214,9 +4214,27 @@ async def get_supplier_products(
         if has_more:
             products = products[:-1]
         
+        # Format products for JSON serialization
+        formatted_products = []
+        for product in products:
+            formatted_product = {
+                "id": product["id"],
+                "supplier_id": product["supplier_id"],
+                "name": product["name"],
+                "description": product.get("description"),
+                "unit": product.get("unit", "adet"),
+                "unit_price": product["unit_price"],
+                "stock": product.get("stock"),
+                "image_url": product.get("image_url"),
+                "is_active": product.get("is_active", True),
+                "created_at": product["created_at"].isoformat(),
+                "updated_at": product["updated_at"].isoformat()
+            }
+            formatted_products.append(formatted_product)
+        
         return {
-            "products": products,
-            "total": len(products),
+            "products": formatted_products,
+            "total": len(formatted_products),
             "has_more": has_more
         }
         
