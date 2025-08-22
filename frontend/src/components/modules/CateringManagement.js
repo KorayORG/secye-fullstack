@@ -349,7 +349,12 @@ const CateringManagement = ({ companyId, userRole }) => {
                       
                       {canManageCaterings() && (
                         <div className="flex space-x-2 pt-2">
-                          <Button variant="outline" size="sm" className="flex-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleViewCateringDetail(catering)}
+                          >
                             <ExternalLink className="w-4 h-4 mr-1" />
                             Detay
                           </Button>
