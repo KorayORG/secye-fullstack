@@ -176,7 +176,7 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
       const formData = new FormData();
       formData.append('file', bulkUploadFile);
 
-      const response = await axios.post(`${API}/corporate/${companyId}/employees/bulk-import`, formData, {
+      const response = await axios.post(`${API}/${companyType}/${companyId}/employees/bulk-import`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
