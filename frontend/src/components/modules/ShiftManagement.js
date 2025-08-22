@@ -320,10 +320,6 @@ const ShiftManagement = ({ companyId, userRole, companyType = 'corporate' }) => 
     return 'bg-green-100 text-green-800';
   };
 
-  const formatTime = (timeStr) => {
-    return timeStr ? timeStr.substring(0, 5) : '';
-  };
-
   const calculateDuration = (startTime, endTime) => {
     if (!startTime || !endTime) return '';
     
