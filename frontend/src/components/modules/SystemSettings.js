@@ -66,7 +66,7 @@ const SystemSettings = ({ companyId, userRole, companyType = 'corporate' }) => {
     setError('');
     
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/settings`);
+      const response = await axios.get(`${API}/${companyType}/${companyId}/settings`);
       const company = response.data.company;
       
       setCompanySettings(company);
