@@ -22,7 +22,11 @@ import {
   UserX,
   Loader2,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Clock,
+  FileText,
+  UserPlus,
+  Mail
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
