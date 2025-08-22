@@ -67,7 +67,7 @@ const EmployeeManagement = ({ companyId, userRole, companyType = 'corporate' }) 
     setError('');
     
     try {
-      const response = await axios.get(`${API}/corporate/${companyId}/employees`, {
+      const response = await axios.get(`${API}/${companyType}/${companyId}/employees`, {
         params: {
           limit: 100
         }
