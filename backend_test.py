@@ -18,10 +18,12 @@ class SecYeAPITester:
         self.created_shift_id = None
         self.created_user_id = None
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, params=None, headers=None):
         """Run a single API test"""
         url = f"{self.api_url}/{endpoint}" if not endpoint.startswith('http') else endpoint
-        headers = {'Content-Type': 'application/json'}
+        default_headers = {'Content-Type': 'application/json'}
+        if headers:
+            default_headers.update(headers)
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
@@ -33,9 +35,13 @@ class SecYeAPITester:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=default_headers, params=params)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers)
+                response = requests.post(url, json=data, headers=default_headers)
+            elif method == 'PUT':
+                response = requests.put(url, json=data, headers=default_headers)
+            elif method == 'DELETE':
+                response = requests.delete(url, headers=default_headers)
 
             print(f"   Response Status: {response.status_code}")
             
