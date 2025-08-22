@@ -1,0 +1,82 @@
+<analysis>
+The AI engineer successfully initiated the Seç Ye application, a multi-tenant food selection platform, from scratch using React, FastAPI, and MongoDB. Key milestones include implementing a robust authentication and registration system (with a self-correction to disable Redis due to environment issues), building a comprehensive Master Admin Panel for system management and corporate application approvals, and completely migrating the application from mock data to real-time database integration. The AI effectively addressed user feedback, promptly fixing identified bugs like the missing corporate application form and login UI issues. The project currently stands with foundational features working end-to-end, and the immediate focus is on populating the content for the sub-modules within the corporate, catering, and supplier panels, as requested by the user.
+</analysis>
+
+<product_requirements>
+The Seç Ye application aims to be a single platform for corporate (Firma), catering, and supplier users, facilitating menu selection, scoring, suggestions, offers, supply orders, company management, shift/menu planning, in-site mail, and audit logs. It features a multi-tenant, role-based security model with a mobile-first, intuitive UI. The design theme uses orange + white with dark green accents, prioritizing cool but calm micro-animations for corporate panels and simplicity for individual users. Performance targets include LCP <= 2.5s and p95 API <= 300ms, using techniques like skeleton loaders and caching. Security is paramount, with RBAC, HMAC-signed path segments, Argon2id passwords, and CSRF protection. The application supports various corporate (1-4), catering (1-4), and supplier (1-4) roles, in addition to owners. Data models include Company, User, RoleAssignment, Shift, MenuFrame, Choice, Rating, and AuditLog, with a focus on UUIDs.
+</product_requirements>
+
+<key_technical_concepts>
+- **Frontend**: React, Tailwind CSS, shadcn/ui, Axios for API calls, React Router DOM for navigation.
+- **Backend**: FastAPI, MongoDB (via PyMongo/Motor), Pydantic for data validation, Argon2id for password hashing, JWT-like HMAC-SHA256 for signed paths/tokens, .
+- **Architecture**: Multi-tenant, Role-Based Access Control (RBAC), API Gateway (Kubernetes Ingress with  prefix), environment variables, PWA-ready design.
+- **Database**: MongoDB with UUIDs for IDs, specific date/time serialization.
+- **Security**: HMAC-signed URLs, Argon2id, cookie-based sessions, explicit environment variable usage.
+- **UI/UX**: Responsive design, shadcn components, modern color palette (orange, white, dark green accents).
+</key_technical_concepts>
+
+<code_architecture>
+The application has a standard full-stack structure:
+
+
+**Detailed Directory Structure & Key Files:**
+
+- 
+  - : Python dependencies (FastAPI, uvicorn, pymongo, python-dotenv, passlib, etc. and redis, though currently unused).
+  - :
+    - **Importance**: Main FastAPI application entry point. Contains database connection, authentication logic, HMAC middleware, API endpoints for user authentication (login, individual/corporate registration), admin panel (dashboard, applications, companies), and core data retrieval.
+    - **Changes**: Initial FastAPI setup, authentication routes (login, register), HMAC logic for signed paths, MongoDB connection. Added Pydantic models for request/response. Redis integration attempt (and subsequent disabling/commenting out). Added admin login and  endpoints (dashboard, applications, companies). Added user profile and corporate dashboard data retrieval.
+  - :
+    - **Importance**: Stores environment-specific configurations like , , , , and admin credentials.
+    - **Changes**: Initial setup with placeholder secrets, then updated with user-provided strong admin credentials.
+
+- 
+  - : Node.js dependencies (React, React Router DOM, Axios, Tailwind CSS, shadcn/ui related libraries, etc.).
+  - : Tailwind CSS configuration.
+  - 
+    - :
+      - **Importance**: Frontend entry point, renders the main App component.
+      - **Changes**: Basic setup to render .
+    - :
+      - **Importance**: Main React component, handles routing for login, individual panels, and admin panels. Uses .
+      - **Changes**: Implemented main routing logic for , , and .
+    - :
+      - **Importance**: Handles user authentication (individual/corporate login) and registration (individual/corporate application). Features a tabbed interface, company search, and form validation.
+      - **Changes**: Initial login/registration forms, bug fixes for tab switching and company selection state, added the corporate application form (existing/new company), integrated API calls for auth/registration.
+    - :
+      - **Importance**: Provides a master administrative interface for managing the platform. Includes a dashboard with key metrics, a section for reviewing and managing corporate applications (approve/reject), and a section for listing and managing companies.
+      - **Changes**: Created from scratch to fulfill user requirements, including admin login, dashboard, application listing/management, company listing/management with interactive features.
+    - :
+      - **Importance**: The main dashboard and navigation for corporate users.
+      - **Changes**: Initial placeholder, later updated to fetch and display real data from the backend, including corporate dashboard metrics and user profile information. Contains tabs for Genel (General), Çalışanlar (Employees), Vardiyalar (Shifts), Sistem (System), Catering Firmaları (Catering Companies), Mail (Mail) - *most of these are currently empty placeholders*.
+    - :
+      - **Importance**: The main dashboard and navigation for individual (corporate employee) users.
+      - **Changes**: Initial placeholder, later updated to fetch and display real user profile and activity data from the backend.
+    - :
+      - **Importance**: Contains all shadcn/ui components (e.g., , , , , ).
+      - **Changes**: No direct modifications, but these components are extensively used in , , , and .
+</code_architecture>
+
+<pending_tasks>
+- **Redis Re-integration**: Properly set up and utilize Redis for caching (e.g., user roles, company lists) when needed for production, as it is currently non-functional.
+- **Detailed Corporate Modules**: Implement Çalışanlar, Vardiyalar, Sistem, Catering Firmaları, Mail modules for Corporate panels.
+- **Detailed Catering Modules**: Implement Çalışanlar, Sistem, Firmalar, Tedarikçiler, Mail modules for Catering panels.
+- **Detailed Supplier Modules**: Implement Çalışanlar, Sistem, Catering Firmaları, Mağazam, Mail modules for Supplier panels.
+- **Menu Selection (uwufufu) Vertical Slice**: Develop the full menu creation, selection, and rating flow.
+- **Excel Bulk Upload**: Implement the feature for bulk uploading employee data and generating unique passwords.
+</pending_tasks>
+
+<current_work>
+Immediately before this summary request, the previous AI engineer was tasked with developing the missing modules and panels within the Corporate, Catering, and Supplier dashboards. The user explicitly stated that modules like Çalışanlar, Vardiyalar, Sistem, Catering Firmaları, and Mail in the Corporate panel, and similar modules in Catering and Supplier panels, are currently empty placeholders.
+
+The AI engineer acknowledged this as a significant task and planned to implement it in three stages:
+1.  **Backend API'leri**: Creating the necessary API endpoints for each module.
+2.  **Frontend Components**: Developing the detailed UI components for each module.
+3.  **RBAC Integration**: Ensuring role-based access control for these new functionalities.
+
+Currently, the , , and  are functional, with real data integration for general dashboards and user profiles. The Master Admin Panel is fully developed, allowing login, dashboard viewing, corporate application management, and company management. The authentication system for individual and corporate users is also functional. However, the specific sub-modules requested by the user for the corporate, catering, and supplier tenant types are not yet implemented beyond their navigational tabs. The system is in a state where the core infrastructure and initial dashboards are robust, but the detailed features for each tenant type's operational modules are pending.
+</current_work>
+
+<optional_next_step>
+The next step is to begin implementing the backend APIs for the first set of missing modules in the corporate, catering, and supplier panels.
+</optional_next_step>
