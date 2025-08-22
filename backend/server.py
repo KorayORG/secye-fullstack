@@ -135,6 +135,12 @@ class LoginResponse(BaseModel):
     redirect_url: Optional[str] = None
     message: str
 
+class LoginResponse(BaseModel):
+    success: bool
+    user_id: str
+    redirect_url: Optional[str] = None
+    message: str
+
 class CompanySearchResponse(BaseModel):
     companies: List[Dict[str, Any]]
     has_more: bool
