@@ -112,7 +112,7 @@ const MailSystem = ({ companyId, userId, userRole, companyType = 'corporate' }) 
     setSuccess('');
 
     try {
-      await axios.post(`${API}/corporate/${companyId}/messages`, {
+      await axios.post(`${API}/${companyType}/${companyId}/messages`, {
         ...composeForm,
         from_user_id: userId,
         from_company_id: companyId
