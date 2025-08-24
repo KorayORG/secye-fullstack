@@ -544,7 +544,11 @@ const CorporateManagement = ({ companyId, userRole }) => {
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Adres:</span>
                             <span className="font-medium text-right max-w-32 truncate">
-                              {company.address.text || company.address}
+                              {typeof company.address === 'string'
+                                ? company.address
+                                : (company.address.text
+                                    ? company.address.text
+                                    : Object.values(company.address).filter(Boolean).join(', '))}
                             </span>
                           </div>
                         )}
