@@ -29,6 +29,15 @@ const CorporateManagement = ({ companyId, userRole }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Termination states
+  const [showTerminationDialog, setShowTerminationDialog] = useState(false);
+  const [selectedCorporate, setSelectedCorporate] = useState(null);
+  const [terminationForm, setTerminationForm] = useState({
+    reason: '',
+    message: ''
+  });
+  const [terminationLoading, setTerminationLoading] = useState(false);
 
   useEffect(() => {
     loadPartnerships();
