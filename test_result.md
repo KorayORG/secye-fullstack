@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Complete Phase 1 and Phase 2 of the Seç Ye application development. Phase 1 includes Corporate Panel Core Modules (Çalışanlar/Employees, Vardiyalar/Shifts, Catering Firmaları/Catering Companies). Phase 2 includes System & Communication modules (Sistem/System, Mail/Internal messaging). Then lay foundations for Phase 3 (Catering & Supplier Panels)."
+user_problem_statement: "Complete bug fixes and improvements for catering management system. User requested: 1) Catering firms should see ALL Corporate companies registered in database in 'Firmalar' page with two sections: 'Tüm Firmalar' (All Companies) and 'Anlaşmalı Firmalar' (Partner Companies), 2) Fix backend API endpoints that are returning 404 errors, 3) Fix logic error in offer acceptance messages - Corporate companies RECEIVE catering services, Catering companies PROVIDE services to corporates, 4) Move 'Teklifler' (Offers) page content to different sections - Corporate users should see offers in 'Catering Firmaları' page, Catering users should see offers in 'Firmalar' page."
 
 backend:
   - task: "Employee Management APIs"
