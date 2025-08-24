@@ -258,7 +258,80 @@ const CateringManagement = ({ companyId, userRole }) => {
           <p className="text-gray-600">Catering firmalarını keşfedin ve ortaklık kurun</p>
         </div>
         {canManageCaterings() && (
-          <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
+          <>
+            {/* Offer Dialog */}
+            <Dialog open={showOfferDialog} onOpenChange={setShowOfferDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center">
+                    <Send className="w-5 h-5 mr-2" />
+                    Teklif Gönder
+                  </DialogTitle>
+                  <DialogDescription>
+                    {selectedCatering?.name} firmasına teklif gönder
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="unit_price">Birim Öğün Fiyatı (TL)</Label>
+                    <div className="relative">
+                      <TrendingUp className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                      <Input
+                        id="unit_price"
+                        type="number"
+                        placeholder="Örn: 25.50"
+                        value={offerForm.unit_price}
+                        onChange={(e) => setOfferForm({...offerForm, unit_price: e.target.value})}
+                        className="pl-9"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Mesaj (Opsiyonel)</Label>
+                    <Textarea
+                      id="message"
+                      placeholder="Teklifiniz hakkında ek bilgiler..."
+                      value={offerForm.message}
+                      onChange={(e) => setOfferForm({...offerForm, message: e.target.value})}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowOfferDialog(false)}
+                      disabled={offerLoading}
+                    >
+                      İptal
+                    </Button>
+                    <Button 
+                      onClick={handleSendOffer}
+                      disabled={offerLoading}
+                    >
+                      {offerLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Gönderiliyor...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Teklif Gönder
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Search Dialog */}
+            <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
