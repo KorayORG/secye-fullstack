@@ -28,7 +28,9 @@ import {
   Truck,
   DollarSign,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Phone,
+  MapPin
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
