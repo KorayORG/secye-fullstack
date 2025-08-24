@@ -565,10 +565,10 @@ const CateringManagement = ({ companyId, userRole }) => {
                           {!isPartnerCatering ? (
                             <Button
                               size="sm"
-                              onClick={() => handleAddPartnership(catering.id)}
+                              onClick={() => handleOpenOfferDialog(catering)}
                             >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Ekle
+                              <Send className="w-4 h-4 mr-1" />
+                              Teklif Gönder
                             </Button>
                           ) : (
                             <Button
