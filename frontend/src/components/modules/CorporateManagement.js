@@ -40,6 +40,12 @@ const CorporateManagement = ({ companyId, userRole }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'agreements'
+  const [mainTab, setMainTab] = useState('companies'); // 'companies' or 'offers'
+  
+  // Offers states
+  const [offers, setOffers] = useState([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [terminationRequests, setTerminationRequests] = useState([]);
   
   // Termination states
   const [showTerminationDialog, setShowTerminationDialog] = useState(false);
