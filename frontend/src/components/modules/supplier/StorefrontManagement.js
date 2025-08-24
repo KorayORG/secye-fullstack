@@ -35,10 +35,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const UNIT_TYPES = [
+  { value: 'gram', label: 'Gram (gr)' },
   { value: 'kg', label: 'Kilogram (kg)' },
   { value: 'litre', label: 'Litre (L)' },
+  { value: 'ml', label: 'Mililitre (mL)' },
   { value: 'adet', label: 'Adet' },
-  { value: 'gram', label: 'Gram (g)' },
   { value: 'ton', label: 'Ton' },
   { value: 'paket', label: 'Paket' },
   { value: 'kutu', label: 'Kutu' }
