@@ -78,7 +78,7 @@ const CateringManagement = ({ companyId, userRole }) => {
     setError('');
     
     try {
-      const response = await axios.get(`${API}/companies/search`, {
+      const response = await axios.get(`${API}/companies`, {
         params: {
           type: 'catering',
           limit: 50
