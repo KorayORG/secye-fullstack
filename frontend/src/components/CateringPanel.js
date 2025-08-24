@@ -17,7 +17,8 @@ import {
   Loader2,
   ChefHat,
   Truck,
-  Plus
+  Plus,
+  FileText
 } from 'lucide-react';
 
 // Import module components (to be created)
