@@ -211,6 +211,17 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
                         </span>
                       </div>
 
+                      {/* Duration */}
+                      <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                        <div className="flex items-center">
+                          <Timer className="w-5 h-5 text-orange-500 mr-2" />
+                          <span className="text-sm text-gray-600">Anlaşma Süresi</span>
+                        </div>
+                        <span className="text-lg font-bold text-orange-600">
+                          {offer.duration_months} Ay
+                        </span>
+                      </div>
+
                       {/* Message */}
                       {offer.message && (
                         <div className="p-3 bg-blue-50 rounded-lg">
