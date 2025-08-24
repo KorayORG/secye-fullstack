@@ -316,15 +316,6 @@ const CateringPanel = () => {
             />
           </TabsContent>
 
-          {/* Offers Tab */}
-          <TabsContent value="offers">
-            <OfferManagement 
-              companyId={getCompanyIdFromPath()} 
-              userRole={userProfile?.role}
-              companyType="catering"
-            />
-          </TabsContent>
-
           {/* System Settings Tab */}
           <TabsContent value="system">
             <SystemSettings 
