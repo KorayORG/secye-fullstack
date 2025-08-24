@@ -4601,6 +4601,155 @@ async def respond_to_termination_request(
         )
 
 
+# ===== GENERAL COMPANIES & PARTNERSHIPS APIs =====
+@api_router.get("/companies")
+async def get_companies(
+    type: str = None,
+    limit: int = 100,
+    offset: int = 0,
+    search: str = ""
+):
+    """Get companies by type with optional search"""
+    try:
+        # Build filter query
+        filter_query = {"is_active": True}
+        
+        if type:
+            if type not in ['corporate', 'catering', 'supplier']:
+                raise HTTPException(status_code=400, detail="Geçersiz şirket tipi")
+            filter_query["type"] = type
+        
+        if search:
+            filter_query["name"] = {"$regex": search, "$options": "i"}
+        
+        # Get companies
+        companies = await db.companies.find(filter_query).sort("name", 1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(companies) > limit
+        if has_more:
+            companies = companies[:-1]
+        
+        # Format companies
+        result_companies = []
+        for company in companies:
+            result_companies.append({
+                "id": company["id"],
+                "name": company["name"],
+                "slug": company["slug"],
+                "type": company["type"],
+                "phone": company.get("phone"),
+                "address": company.get("address"),
+                "created_at": company["created_at"].isoformat(),
+                "ratings": company.get("ratings"),
+                "counts": company.get("counts")
+            })
+        
+        return {
+            "companies": result_companies,
+            "total": len(result_companies),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get companies error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Şirketler alınamadı"
+        )
+
+@api_router.get("/companies/{company_id}")
+async def get_company_by_id(company_id: str):
+    """Get company details by ID"""
+    try:
+        # Get company
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        return {
+            "id": company["id"],
+            "name": company["name"],
+            "slug": company["slug"],
+            "type": company["type"],
+            "phone": company.get("phone"),
+            "address": company.get("address"),
+            "created_at": company["created_at"].isoformat(),
+            "updated_at": company["updated_at"].isoformat(),
+            "ratings": company.get("ratings"),
+            "counts": company.get("counts"),
+            "is_active": company["is_active"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get company by ID error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Şirket bilgileri alınamadı"
+        )
+
+@api_router.get("/partnerships")
+async def get_partnerships(
+    catering_id: str = None,
+    corporate_id: str = None,
+    supplier_id: str = None,
+    partnership_type: str = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get partnerships with filtering"""
+    try:
+        # Build filter query
+        filter_query = {"is_active": True}
+        
+        if catering_id:
+            filter_query["catering_id"] = catering_id
+        if corporate_id:
+            filter_query["corporate_id"] = corporate_id
+        if supplier_id:
+            filter_query["supplier_id"] = supplier_id
+        if partnership_type:
+            filter_query["partnership_type"] = partnership_type
+        
+        # Get partnerships
+        partnerships = await db.partnerships.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(partnerships) > limit
+        if has_more:
+            partnerships = partnerships[:-1]
+        
+        # Format partnerships
+        result_partnerships = []
+        for partnership in partnerships:
+            result_partnerships.append({
+                "id": partnership["id"],
+                "corporate_id": partnership.get("corporate_id"),
+                "catering_id": partnership.get("catering_id"),
+                "supplier_id": partnership.get("supplier_id"),
+                "partnership_type": partnership["partnership_type"],
+                "is_active": partnership["is_active"],
+                "created_at": partnership["created_at"].isoformat(),
+                "updated_at": partnership["updated_at"].isoformat()
+            })
+        
+        return {
+            "partnerships": result_partnerships,
+            "total": len(result_partnerships),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get partnerships error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ortaklıklar alınamadı"
+        )
+
 # Include router
 app.include_router(api_router)
 
