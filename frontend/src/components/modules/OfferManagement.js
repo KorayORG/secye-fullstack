@@ -109,6 +109,28 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
     }
   };
 
+  const handleTerminationResponse = async (requestId, action) => {
+    if (!window.confirm(`Bu fesih talebini ${action === 'approve' ? 'onaylamak' : 'reddetmek'} istediğinizden emin misiniz?`)) {
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.put(`${API}/${companyType}/${companyId}/termination-requests/${requestId}`, {
+        action: action
+      });
+      
+      setSuccess(`Fesih talebi ${action === 'approve' ? 'onaylandı' : 'reddedildi'}`);
+      loadTerminationRequests();
+      loadOffers(); // Reload offers as this might affect partnerships
+    } catch (err) {
+      console.error('Termination response error:', err);
+      setError('Fesih talebi yanıtlanırken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       sent: { label: 'Gönderildi', className: 'bg-blue-100 text-blue-800' },
