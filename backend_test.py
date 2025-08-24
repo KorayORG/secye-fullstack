@@ -2013,7 +2013,7 @@ def main():
         print("\n📋 Test 5: Search for Approved Companies")
         tester.test_company_search("corporate", "Test Kurumsal")
         tester.test_company_search("catering", "Test Catering")
-        tester.test_company_search("supplier", "Test Supplier")
+        tester.test_company_search("supplier", "Tedarikçi")
         
     else:
         print(f"\n🏢 Found existing companies:")
