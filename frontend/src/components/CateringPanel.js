@@ -122,7 +122,6 @@ const CateringPanel = () => {
     return [
       { id: 'general', label: 'Genel', icon: BarChart3 },
       { id: 'employees', label: 'Çalışanlar', icon: Users },
-      { id: 'offers', label: 'Teklifler', icon: FileText },
       { id: 'system', label: 'Sistem', icon: Settings },
       { id: 'corporates', label: 'Firmalar', icon: Building2 },
       { id: 'suppliers', label: 'Tedarikçiler', icon: Truck },
