@@ -371,9 +371,10 @@ const CorporateManagement = ({ companyId, userRole }) => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleOpenTerminationDialog(company)}
                           className="text-red-600 hover:text-red-700 hover:border-red-300"
                         >
-                          <Clock className="w-4 h-4 mr-1" />
+                          <Ban className="w-4 h-4 mr-1" />
                           Fesih
                         </Button>
                       </div>
