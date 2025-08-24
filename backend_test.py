@@ -2487,83 +2487,59 @@ class SecYeAPITester:
         return approved_count > 0
 
 def main():
-    print("🚀 Starting Seç Ye API Tests - SUPPLIER ECOSYSTEM FOCUS")
-    print("=" * 60)
+    """Main function to run focused Supplier Product Management API tests"""
+    print("🚀 Starting Supplier Product Management API Testing")
+    print("=" * 70)
     
-    # Setup
     tester = SecYeAPITester()
-
-    # Test 1: API Health Check
-    print("\n📋 Test 1: API Health Check")
-    tester.test_health_check()
-
-    # Test 2: Company Search (to get existing companies)
-    print("\n📋 Test 2: Company Search")
-    tester.test_company_search("corporate", "")  # Get any corporate company
-    tester.test_company_search("catering", "")   # Get any catering company
-    tester.test_company_search("supplier", "")   # Get any supplier company
-
-    # Test 3: Create test companies if none exist
-    if not tester.corporate_company_id or not tester.catering_company_id or not tester.supplier_company_id:
-        print("\n📋 Test 3: Creating Test Companies")
-        companies_created = tester.create_test_companies()
-        if not companies_created:
-            print("❌ Failed to create test companies - cannot proceed with supplier tests")
-            return 1
-        
-        # Test 4: Admin login and approve applications
-        print("\n📋 Test 4: Admin Login and Application Approval")
-        admin_login_success = tester.admin_login()
-        if admin_login_success:
-            approval_success = tester.approve_applications()
-            if not approval_success:
-                print("❌ Failed to approve applications")
-                return 1
-        else:
-            print("❌ Admin login failed - cannot approve applications")
-            return 1
-        
-        # Test 5: Search for approved companies
-        print("\n📋 Test 5: Search for Approved Companies")
-        tester.test_company_search("corporate", "Test Kurumsal")
-        tester.test_company_search("catering", "Test Catering")
-        tester.test_company_search("supplier", "Tedarikçi")
-        
-    else:
-        print(f"\n🏢 Found existing companies:")
-        print(f"   Corporate: {tester.corporate_company_id}")
-        print(f"   Catering: {tester.catering_company_id}")
-        print(f"   Supplier: {tester.supplier_company_id}")
-
-    # ===== FOCUSED SUPPLIER ECOSYSTEM TEST =====
-    if tester.supplier_company_id and tester.catering_company_id:
-        print(f"\n🏢 Using Companies:")
-        print(f"   Supplier: {tester.supplier_company_id}")
-        print(f"   Catering: {tester.catering_company_id}")
-        
-        # Test 6: FOCUSED Supplier Ecosystem Test
-        print("\n📋 Test 6: FOCUSED SUPPLIER ECOSYSTEM TEST")
-        supplier_system_success = tester.test_supplier_ecosystem_apis()
-        
-    else:
-        print("⚠️  Missing required companies - cannot test supplier ecosystem")
-        supplier_system_success = False
-
-    # Print results
-    print("\n" + "=" * 60)
-    print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
-    # Summary of supplier ecosystem test
-    if tester.supplier_company_id and tester.catering_company_id:
-        print("\n🎯 SUPPLIER ECOSYSTEM TEST SUMMARY:")
-        print(f"   🏭 Supplier System: {'✅ WORKING' if supplier_system_success else '❌ ISSUES'}")
+    # Step 1: Health check
+    print("\n📋 Step 1: API Health Check")
+    health_success, _ = tester.test_health_check()
+    if not health_success:
+        print("❌ API health check failed. Cannot proceed with tests.")
+        return False
     
-    if supplier_system_success:
-        print("🎉 SUPPLIER ECOSYSTEM APIs ARE WORKING CORRECTLY!")
-        return 0
+    # Step 2: Get company IDs for testing
+    print("\n📋 Step 2: Getting Company IDs for Testing")
+    
+    # Get supplier companies
+    supplier_success, _ = tester.test_company_search("supplier", "")
+    if not supplier_success or not tester.supplier_company_id:
+        print("❌ No supplier companies found. Cannot proceed with supplier tests.")
+        return False
+    
+    # Get catering companies
+    catering_success, _ = tester.test_company_search("catering", "")
+    if not catering_success or not tester.catering_company_id:
+        print("❌ No catering companies found. Cannot proceed with shopping API tests.")
+        return False
+    
+    print(f"✅ Found Supplier Company: {tester.supplier_company_id}")
+    print(f"✅ Found Catering Company: {tester.catering_company_id}")
+    
+    # Step 3: Run focused supplier product management tests
+    print("\n📋 Step 3: Running Focused Supplier Product Management Tests")
+    supplier_success = tester.test_supplier_product_management_apis_focused()
+    
+    # Final Results
+    print("\n" + "=" * 70)
+    print("🎯 FINAL TEST RESULTS")
+    print("=" * 70)
+    
+    print(f"Total Tests Run: {tester.tests_run}")
+    print(f"Tests Passed: {tester.tests_passed}")
+    print(f"Success Rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
+    
+    if supplier_success:
+        print("\n🎉 SUPPLIER PRODUCT MANAGEMENT APIs: ✅ WORKING")
+        print("   All critical supplier product management functionality is operational")
     else:
-        print("⚠️  SUPPLIER ECOSYSTEM HAS ISSUES!")
-        return 1
+        print("\n❌ SUPPLIER PRODUCT MANAGEMENT APIs: ❌ ISSUES FOUND")
+        print("   Critical issues detected in supplier product management system")
+    
+    return supplier_success
 
 if __name__ == "__main__":
-    sys.exit(main())
+    success = main()
+    sys.exit(0 if success else 1)
