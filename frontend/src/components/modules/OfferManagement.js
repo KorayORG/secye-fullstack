@@ -199,6 +199,43 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
         </Alert>
       )}
 
+      {/* Termination Request Notifications */}
+      {terminationRequests.length > 0 && (
+        <Alert className="border-orange-200 bg-orange-50">
+          <Ban className="h-4 w-4" />
+          <AlertDescription className="text-orange-800">
+            <div className="space-y-2">
+              <p className="font-medium">⚠️ Bekleyen Fesih Talepleri ({terminationRequests.length})</p>
+              {terminationRequests.slice(0, 3).map((request) => (
+                <div key={request.id} className="flex items-center justify-between bg-white p-2 rounded border border-orange-200">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{request.other_company?.name}</p>
+                    <p className="text-xs text-gray-600">Neden: {request.reason}</p>
+                  </div>
+                  <div className="flex space-x-1 ml-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleTerminationResponse(request.id, 'approve')}
+                      className="bg-green-600 hover:bg-green-700 text-white h-7 px-2 text-xs"
+                    >
+                      Onayla
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleTerminationResponse(request.id, 'reject')}
+                      className="text-red-600 hover:text-red-700 hover:border-red-300 h-7 px-2 text-xs"
+                    >
+                      Reddet
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
