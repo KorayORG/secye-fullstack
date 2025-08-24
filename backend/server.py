@@ -203,6 +203,45 @@ class TerminationRequest(BaseModel):
     approved_at: Optional[datetime] = None
     approved_by: Optional[str] = None
 
+# Supplier Product Models
+class Product(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    supplier_id: str
+    name: str
+    description: str
+    unit_type: Literal['kg', 'litre', 'adet', 'gram', 'ton', 'paket', 'kutu'] = 'adet'
+    unit_price: float
+    stock_quantity: int
+    minimum_order_quantity: int = 1
+    is_active: bool = True
+    category: Optional[str] = None
+    image_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Order(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    supplier_id: str
+    catering_id: str
+    status: Literal['pending', 'confirmed', 'preparing', 'delivered', 'cancelled'] = 'pending'
+    total_amount: float
+    delivery_address: Optional[str] = None
+    delivery_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    confirmed_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+
+class OrderItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    order_id: str
+    product_id: str
+    quantity: int
+    unit_price: float
+    total_price: float
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Request/Response models
 class LoginRequest(BaseModel):
     phone: str
