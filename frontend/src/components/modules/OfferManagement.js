@@ -435,7 +435,10 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
                             <div className="flex items-center">
                               <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                               <span className="text-sm text-green-700 font-medium">
-                                Teklif kabul edildi! Artık bu firmaya catering hizmeti verebilirsiniz.
+                                {companyType === 'catering' 
+                                  ? 'Teklif kabul edildi! Artık bu firmaya catering hizmeti verebilirsiniz.'
+                                  : 'Teklif kabul edildi! Artık bu firmadan catering hizmeti alabilirsiniz.'
+                                }
                               </span>
                             </div>
                           </div>
