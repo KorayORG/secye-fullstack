@@ -3182,11 +3182,14 @@ async def send_offer_to_catering(
         catering_id = request.get("catering_id")
         unit_price = request.get("unit_price")
         message = request.get("message", "")
+        duration_months = request.get("duration_months", 12)  # Default 12 months
         
         if not catering_id:
             raise HTTPException(status_code=400, detail="Catering firma ID'si gerekli")
         if not unit_price or unit_price <= 0:
             raise HTTPException(status_code=400, detail="Geçerli birim fiyat gerekli")
+        if duration_months not in [3, 6, 12, 24, 36]:
+            raise HTTPException(status_code=400, detail="Geçersiz süre seçimi (3, 6, 12, 24, 36 ay)")
         
         # Verify catering company exists
         catering_company = await db.companies.find_one({"id": catering_id, "type": "catering", "is_active": True})
@@ -3203,6 +3206,10 @@ async def send_offer_to_catering(
         if existing_offer:
             raise HTTPException(status_code=400, detail="Bu catering firmasına zaten bekleyen bir teklifiniz var")
         
+        # Calculate start and end dates
+        start_date = datetime.now(timezone.utc)
+        end_date = start_date + timedelta(days=duration_months * 30)  # Approximate month calculation
+        
         # Create the offer
         offer = {
             "id": str(uuid.uuid4()),
@@ -3210,6 +3217,9 @@ async def send_offer_to_catering(
             "to_company_id": catering_id,
             "unit_price": float(unit_price),
             "message": message,
+            "duration_months": duration_months,
+            "start_date": start_date,
+            "end_date": end_date,
             "status": "sent",
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc)
