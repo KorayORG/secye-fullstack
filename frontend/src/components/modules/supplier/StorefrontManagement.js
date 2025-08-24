@@ -289,10 +289,11 @@ const StorefrontManagement = ({ companyId, userRole }) => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="products">Ürünler</TabsTrigger>
-          <TabsTrigger value="orders">Siparişler</TabsTrigger>
+          <TabsTrigger value="stock">Stok Takip</TabsTrigger>
           <TabsTrigger value="stats">İstatistikler</TabsTrigger>
+          <TabsTrigger value="orders">Siparişler</TabsTrigger>
         </TabsList>
 
         {/* Products Tab */}
