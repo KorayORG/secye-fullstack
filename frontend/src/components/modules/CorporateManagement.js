@@ -6,6 +6,7 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Alert, AlertDescription } from '../ui/alert';
 import { 
@@ -20,7 +21,11 @@ import {
   Heart,
   Clock,
   TrendingUp,
-  Ban
+  Ban,
+  FileText,
+  XCircle,
+  Timer,
+  MessageSquare
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
