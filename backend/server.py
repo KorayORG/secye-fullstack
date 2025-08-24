@@ -3132,6 +3132,303 @@ async def delete_corporate_partnership(
             detail="Ortaklık sonlandırılamadı"
         )
 
+# ===== OFFER SYSTEM APIs =====
+@api_router.post("/corporate/{company_id}/offers")
+async def send_offer_to_catering(
+    company_id: str,
+    request: dict
+):
+    """Send an offer to a catering company"""
+    try:
+        # Verify corporate company exists
+        corporate_company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not corporate_company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Extract offer data
+        catering_id = request.get("catering_id")
+        unit_price = request.get("unit_price")
+        message = request.get("message", "")
+        
+        if not catering_id:
+            raise HTTPException(status_code=400, detail="Catering firma ID'si gerekli")
+        if not unit_price or unit_price <= 0:
+            raise HTTPException(status_code=400, detail="Geçerli birim fiyat gerekli")
+        
+        # Verify catering company exists
+        catering_company = await db.companies.find_one({"id": catering_id, "type": "catering", "is_active": True})
+        if not catering_company:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        
+        # Check if there's already a pending offer between these companies
+        existing_offer = await db.offers.find_one({
+            "from_company_id": company_id,
+            "to_company_id": catering_id,
+            "status": "sent"
+        })
+        
+        if existing_offer:
+            raise HTTPException(status_code=400, detail="Bu catering firmasına zaten bekleyen bir teklifiniz var")
+        
+        # Create the offer
+        offer = {
+            "id": str(uuid.uuid4()),
+            "from_company_id": company_id,
+            "to_company_id": catering_id,
+            "unit_price": float(unit_price),
+            "message": message,
+            "status": "sent",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.offers.insert_one(offer)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "OFFER_SENT",
+            "company_id": company_id,
+            "meta": {
+                "offer_id": offer["id"],
+                "to_company_id": catering_id,
+                "unit_price": unit_price
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Teklif gönderildi", "offer_id": offer["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send offer error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Teklif gönderilemedi"
+        )
+
+@api_router.get("/corporate/{company_id}/offers")
+async def get_corporate_offers(
+    company_id: str,
+    offer_type: str = "sent",  # "sent" or "received"
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get offers sent by or received by corporate company"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query
+        if offer_type == "sent":
+            filter_query = {"from_company_id": company_id}
+        else:  # received
+            filter_query = {"to_company_id": company_id}
+        
+        # Get offers
+        offers = await db.offers.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(offers) > limit
+        if has_more:
+            offers = offers[:-1]
+        
+        # Get company details for each offer
+        result_offers = []
+        for offer in offers:
+            # Get the other company details
+            other_company_id = offer["to_company_id"] if offer_type == "sent" else offer["from_company_id"]
+            other_company = await db.companies.find_one({"id": other_company_id})
+            
+            result_offers.append({
+                "id": offer["id"],
+                "from_company_id": offer["from_company_id"],
+                "to_company_id": offer["to_company_id"],
+                "unit_price": offer["unit_price"],
+                "message": offer.get("message", ""),
+                "status": offer["status"],
+                "created_at": offer["created_at"].isoformat(),
+                "updated_at": offer["updated_at"].isoformat(),
+                "other_company": {
+                    "id": other_company["id"],
+                    "name": other_company["name"],
+                    "type": other_company["type"]
+                } if other_company else None
+            })
+        
+        return {
+            "offers": result_offers,
+            "total": len(result_offers),
+            "has_more": has_more,
+            "offer_type": offer_type
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get corporate offers error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Teklifler alınamadı"
+        )
+
+@api_router.get("/catering/{company_id}/offers")
+async def get_catering_offers(
+    company_id: str,
+    offer_type: str = "received",  # "sent" or "received"
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get offers sent by or received by catering company"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        
+        # Build filter query
+        if offer_type == "received":
+            filter_query = {"to_company_id": company_id}
+        else:  # sent
+            filter_query = {"from_company_id": company_id}
+        
+        # Get offers
+        offers = await db.offers.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(offers) > limit
+        if has_more:
+            offers = offers[:-1]
+        
+        # Get company details for each offer
+        result_offers = []
+        for offer in offers:
+            # Get the other company details
+            other_company_id = offer["from_company_id"] if offer_type == "received" else offer["to_company_id"]
+            other_company = await db.companies.find_one({"id": other_company_id})
+            
+            result_offers.append({
+                "id": offer["id"],
+                "from_company_id": offer["from_company_id"],
+                "to_company_id": offer["to_company_id"],
+                "unit_price": offer["unit_price"],
+                "message": offer.get("message", ""),
+                "status": offer["status"],
+                "created_at": offer["created_at"].isoformat(),
+                "updated_at": offer["updated_at"].isoformat(),
+                "other_company": {
+                    "id": other_company["id"],
+                    "name": other_company["name"],
+                    "type": other_company["type"]
+                } if other_company else None
+            })
+        
+        return {
+            "offers": result_offers,
+            "total": len(result_offers),
+            "has_more": has_more,
+            "offer_type": offer_type
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get catering offers error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Teklifler alınamadı"
+        )
+
+@api_router.put("/catering/{company_id}/offers/{offer_id}")
+async def respond_to_offer(
+    company_id: str,
+    offer_id: str,
+    request: dict
+):
+    """Accept or reject an offer (catering company response)"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "catering", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        
+        # Get the offer
+        offer = await db.offers.find_one({"id": offer_id, "to_company_id": company_id})
+        if not offer:
+            raise HTTPException(status_code=404, detail="Teklif bulunamadı")
+        
+        if offer["status"] != "sent":
+            raise HTTPException(status_code=400, detail="Bu teklif zaten yanıtlanmış")
+        
+        # Extract response data
+        action = request.get("action")  # "accept" or "reject"
+        
+        if action not in ["accept", "reject"]:
+            raise HTTPException(status_code=400, detail="Geçersiz aksiyon")
+        
+        # Update offer status
+        new_status = "accepted" if action == "accept" else "rejected"
+        await db.offers.update_one(
+            {"id": offer_id},
+            {
+                "$set": {
+                    "status": new_status,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # If accepted, create partnership
+        if action == "accept":
+            partnership = {
+                "id": str(uuid.uuid4()),
+                "corporate_id": offer["from_company_id"],
+                "catering_id": company_id,
+                "partnership_type": "catering",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
+                "offer_id": offer_id  # Reference to the accepted offer
+            }
+            
+            # Check if partnership already exists (shouldn't happen but safety check)
+            existing_partnership = await db.partnerships.find_one({
+                "corporate_id": offer["from_company_id"],
+                "catering_id": company_id,
+                "is_active": True
+            })
+            
+            if not existing_partnership:
+                await db.partnerships.insert_one(partnership)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": f"OFFER_{action.upper()}ED",
+            "company_id": company_id,
+            "meta": {
+                "offer_id": offer_id,
+                "from_company_id": offer["from_company_id"],
+                "unit_price": offer["unit_price"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        message = "Teklif kabul edildi" if action == "accept" else "Teklif reddedildi"
+        return {"success": True, "message": message}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Respond to offer error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Teklif yanıtlanamadı"
+        )
+
 # Continue with existing endpoints...
 @api_router.post("/auth/register/corporate/application", response_model=ApplicationResponse)
 async def register_corporate_application(request: CorporateApplicationRequest):
