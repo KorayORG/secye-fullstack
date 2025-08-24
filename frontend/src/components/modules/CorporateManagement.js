@@ -331,45 +331,70 @@ const CorporateManagement = ({ companyId, userRole }) => {
 
       {/* Corporate Companies List */}
       <div>
-        {filteredCorporates.length === 0 ? (
+        {filteredCompanies.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              {corporateCompanies.length === 0 ? (
-                <>
-                  <h3 className="text-lg font-medium text-gray-600 mb-2">Henüz Anlaşmalı Firma Yok</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Firmalardan gelen teklifleri kabul ettiğinizde burada görünecekler
-                  </p>
-                  <div className="inline-flex items-center text-sm text-blue-600">
-                    <Heart className="w-4 h-4 mr-1" />
-                    <span>Teklifler sekmesinden gelen teklifleri kontrol edin</span>
-                  </div>
-                </>
+              {activeTab === 'all' ? (
+                allCorporateCompanies.length === 0 ? (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Henüz Corporate Firma Yok</h3>
+                    <p className="text-sm text-gray-500">
+                      Sistemde kayıtlı corporate firma bulunmamaktadır
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-500">Arama kriterinize uygun firma bulunamadı</p>
+                  </>
+                )
               ) : (
-                <>
-                  <p className="text-gray-500">Arama kriterinize uygun firma bulunamadı</p>
-                </>
+                corporateCompanies.length === 0 ? (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Henüz Anlaşmalı Firma Yok</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Firmalardan gelen teklifleri kabul ettiğinizde burada görünecekler
+                    </p>
+                    <div className="inline-flex items-center text-sm text-blue-600">
+                      <Heart className="w-4 h-4 mr-1" />
+                      <span>Teklifler sekmesinden gelen teklifleri kontrol edin</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-500">Arama kriterinize uygun anlaşmalı firma bulunamadı</p>
+                  </>
+                )
               )}
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCorporates.map((company) => (
-              <Card key={company.id} className="hover:shadow-md transition-shadow border-green-200 bg-green-50">
+            {filteredCompanies.map((company) => (
+              <Card key={company.id} className={`hover:shadow-md transition-shadow ${
+                activeTab === 'agreements' ? 'border-green-200 bg-green-50' : 'border-gray-200'
+              }`}>
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <CardTitle className="text-lg flex items-center">
-                        <Building2 className="w-5 h-5 mr-2 text-green-600" />
+                        <Building2 className={`w-5 h-5 mr-2 ${
+                          activeTab === 'agreements' ? 'text-green-600' : 'text-orange-600'
+                        }`} />
                         {company.name}
                       </CardTitle>
                       <CardDescription>@{company.slug}</CardDescription>
                     </div>
-                    <Badge className="bg-green-100 text-green-800">
-                      <Heart className="w-3 h-3 mr-1" />
-                      Anlaşmalı
-                    </Badge>
+                    {activeTab === 'agreements' ? (
+                      <Badge className="bg-green-100 text-green-800">
+                        <Heart className="w-3 h-3 mr-1" />
+                        Anlaşmalı
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        Corporate
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -382,31 +407,51 @@ const CorporateManagement = ({ companyId, userRole }) => {
                       </span>
                     </div>
                     
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Günlük Ortalama:</span>
-                      <span className="font-medium flex items-center">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        {getDailyMealAverage(company)} öğün
-                      </span>
-                    </div>
+                    {activeTab === 'agreements' && (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Günlük Ortalama:</span>
+                          <span className="font-medium flex items-center">
+                            <TrendingUp className="w-4 h-4 mr-1" />
+                            {getDailyMealAverage(company)} öğün
+                          </span>
+                        </div>
+                        
+                        {company.partnership_created_at && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Anlaşma Tarihi:</span>
+                            <span className="font-medium flex items-center">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              {new Date(company.partnership_created_at).toLocaleDateString('tr-TR')}
+                            </span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Durum:</span>
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Aktif
+                          </Badge>
+                        </div>
+                      </>
+                    )}
                     
-                    {company.partnership_created_at && (
+                    {company.address && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Anlaşma Tarihi:</span>
-                        <span className="font-medium flex items-center">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          {new Date(company.partnership_created_at).toLocaleDateString('tr-TR')}
+                        <span className="text-gray-600">Adres:</span>
+                        <span className="font-medium text-right max-w-32 truncate">
+                          {company.address.text || company.address}
                         </span>
                       </div>
                     )}
                     
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Durum:</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Aktif
-                      </Badge>
-                    </div>
+                    {company.phone && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Telefon:</span>
+                        <span className="font-medium">{company.phone}</span>
+                      </div>
+                    )}
                     
                     {canManageCorporates() && (
                       <div className="flex space-x-2 pt-2">
@@ -418,15 +463,17 @@ const CorporateManagement = ({ companyId, userRole }) => {
                           <ExternalLink className="w-4 h-4 mr-1" />
                           Detay
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenTerminationDialog(company)}
-                          className="text-red-600 hover:text-red-700 hover:border-red-300"
-                        >
-                          <Ban className="w-4 h-4 mr-1" />
-                          Fesih
-                        </Button>
+                        {activeTab === 'agreements' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenTerminationDialog(company)}
+                            className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          >
+                            <Ban className="w-4 h-4 mr-1" />
+                            Fesih
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
