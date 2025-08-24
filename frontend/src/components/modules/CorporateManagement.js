@@ -144,7 +144,7 @@ const CorporateManagement = ({ companyId, userRole }) => {
       setShowTerminationDialog(false);
       setTerminationForm({ reason: '', message: '' });
       setSelectedCorporate(null);
-      loadPartnerships(); // Reload to reflect changes
+      loadData(); // Reload to reflect changes
       
     } catch (err) {
       console.error('Termination request error:', err);
