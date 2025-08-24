@@ -1140,103 +1140,15 @@ const StorefrontManagement = ({ companyId, userRole }) => {
               </CardContent>
             </Card>
           )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <ShoppingCart className="w-8 h-8 text-blue-600" />
-                    <div className="ml-4">
-                      <p className="text-sm text-gray-600">Toplam Sipariş</p>
-                      <p className="text-2xl font-semibold">{stats.total_orders}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <DollarSign className="w-8 h-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-sm text-gray-600">Toplam Gelir</p>
-                      <p className="text-2xl font-semibold">₺{stats.total_revenue?.toFixed(2)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <Truck className="w-8 h-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-sm text-gray-600">Teslim Edilenler</p>
-                      <p className="text-2xl font-semibold">{stats.delivered_orders}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <Clock className="w-8 h-8 text-yellow-600" />
-                    <div className="ml-4">
-                      <p className="text-sm text-gray-600">Bekleyenler</p>
-                      <p className="text-2xl font-semibold">{stats.pending_orders}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <Package className="w-8 h-8 text-purple-600" />
-                    <div className="ml-4">
-                      <p className="text-sm text-gray-600">Toplam Ürün</p>
-                      <p className="text-2xl font-semibold">{stats.total_products}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
-                    <div className="ml-4">
-                      <p className="text-sm text-gray-600">Az Stoklu Ürün</p>
-                      <p className="text-2xl font-semibold">{stats.low_stock_products}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {stats?.low_stock_items?.length > 0 && (
+          
+          {!stats && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-red-600">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  Stok Uyarısı
-                </CardTitle>
-                <CardDescription>
-                  Stok miktarı düşük olan ürünler
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {stats.low_stock_items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center p-3 bg-red-50 rounded border border-red-200">
-                      <span className="font-medium">{item.name}</span>
-                      <Badge className="bg-red-100 text-red-800">
-                        {item.stock_quantity} adet kaldı
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="p-8 text-center">
+                <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-600 mb-2">İstatistik Verisi Yükleniyor</h3>
+                <p className="text-sm text-gray-500">
+                  Lütfen bekleyiniz, verileriniz hazırlanıyor...
+                </p>
               </CardContent>
             </Card>
           )}
