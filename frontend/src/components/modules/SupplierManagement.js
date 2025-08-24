@@ -92,6 +92,53 @@ const SupplierManagement = ({ companyId, userRole }) => {
     }
   };
 
+    }
+  };
+
+  const handleOpenTerminationDialog = (supplier) => {
+    setSelectedSupplier(supplier);
+    setTerminationForm({ reason: '', message: '' });
+    setShowTerminationDialog(true);
+  };
+
+  const handleSendTerminationRequest = async () => {
+    if (!selectedSupplier || !selectedSupplier.partnership_id) return;
+
+    if (!terminationForm.reason.trim()) {
+      setError('Lütfen fesih nedenini belirtin');
+      return;
+    }
+
+    if (!terminationForm.message.trim()) {
+      setError('Lütfen fesih mesajını yazın');
+      return;
+    }
+
+    setTerminationLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.post(`${API}/catering/${companyId}/termination-requests`, {
+        partnership_id: selectedSupplier.partnership_id,
+        reason: terminationForm.reason,
+        message: terminationForm.message
+      });
+      
+      setSuccess(`${selectedSupplier.name} ile anlaşma fesih talebi gönderildi`);
+      setShowTerminationDialog(false);
+      setTerminationForm({ reason: '', message: '' });
+      setSelectedSupplier(null);
+      loadPartnerships(); // Reload to reflect changes
+      
+    } catch (err) {
+      console.error('Termination request error:', err);
+      setError('Fesih talebi gönderilirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setTerminationLoading(false);
+    }
+  };
+
   const getSupplierCategory = (supplier) => {
     // This would normally come from the supplier data
     // For now, we'll categorize based on the name or use default categories
