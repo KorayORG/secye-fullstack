@@ -26,9 +26,9 @@ import EmployeeManagement from './modules/EmployeeManagement';
 import SystemSettings from './modules/SystemSettings';
 import MailSystem from './modules/MailSystem';
 import OfferManagement from './modules/OfferManagement';
+import CorporateManagement from './modules/CorporateManagement';
+import SupplierManagement from './modules/SupplierManagement';
 // TODO: Create catering-specific modules
-// import CorporateManagement from './modules/CorporateManagement';
-// import SupplierManagement from './modules/SupplierManagement';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
