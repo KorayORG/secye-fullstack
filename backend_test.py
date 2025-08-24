@@ -11,10 +11,9 @@ load_dotenv('frontend/.env')
 
 class SecYeAPITester:
     def __init__(self):
-        # Use the same backend URL as the frontend
-        backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8000')
-        self.base_url = backend_url
-        self.api_url = f"{backend_url}/api"
+        # Use the internal backend URL (port 8001)
+        self.base_url = "http://localhost:8001"
+        self.api_url = "http://localhost:8001/api"
         self.tests_run = 0
         self.tests_passed = 0
         self.company_id = None
