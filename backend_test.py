@@ -1941,7 +1941,7 @@ class SecYeAPITester:
         return approved_count > 0
 
 def main():
-    print("🚀 Starting Seç Ye API Tests - OFFER SYSTEM FOCUS")
+    print("🚀 Starting Seç Ye API Tests - SUPPLIER ECOSYSTEM FOCUS")
     print("=" * 60)
     
     # Setup
@@ -1955,13 +1955,14 @@ def main():
     print("\n📋 Test 2: Company Search")
     tester.test_company_search("corporate", "")  # Get any corporate company
     tester.test_company_search("catering", "")   # Get any catering company
+    tester.test_company_search("supplier", "")   # Get any supplier company
 
     # Test 3: Create test companies if none exist
-    if not tester.corporate_company_id or not tester.catering_company_id:
+    if not tester.corporate_company_id or not tester.catering_company_id or not tester.supplier_company_id:
         print("\n📋 Test 3: Creating Test Companies")
         companies_created = tester.create_test_companies()
         if not companies_created:
-            print("❌ Failed to create test companies - cannot proceed with offer tests")
+            print("❌ Failed to create test companies - cannot proceed with supplier tests")
             return 1
         
         # Test 4: Admin login and approve applications
@@ -1980,46 +1981,42 @@ def main():
         print("\n📋 Test 5: Search for Approved Companies")
         tester.test_company_search("corporate", "Test Kurumsal")
         tester.test_company_search("catering", "Test Catering")
+        tester.test_company_search("supplier", "Test Supplier")
         
     else:
         print(f"\n🏢 Found existing companies:")
         print(f"   Corporate: {tester.corporate_company_id}")
         print(f"   Catering: {tester.catering_company_id}")
+        print(f"   Supplier: {tester.supplier_company_id}")
 
-    # ===== FOCUSED OFFER SYSTEM TEST =====
-    if tester.corporate_company_id and tester.catering_company_id:
+    # ===== FOCUSED SUPPLIER ECOSYSTEM TEST =====
+    if tester.supplier_company_id and tester.catering_company_id:
         print(f"\n🏢 Using Companies:")
-        print(f"   Corporate: {tester.corporate_company_id}")
+        print(f"   Supplier: {tester.supplier_company_id}")
         print(f"   Catering: {tester.catering_company_id}")
         
-        # Test 6: FOCUSED Offer System Test
-        print("\n📋 Test 6: FOCUSED OFFER SYSTEM TEST")
-        offer_system_success = tester.test_offer_system_apis()
-        
-        # Test 7: Partnership APIs (for context)
-        print("\n📋 Test 7: Partnership APIs (for context)")
-        partnership_success = tester.test_partnership_apis()
+        # Test 6: FOCUSED Supplier Ecosystem Test
+        print("\n📋 Test 6: FOCUSED SUPPLIER ECOSYSTEM TEST")
+        supplier_system_success = tester.test_supplier_ecosystem_apis()
         
     else:
-        print("⚠️  Missing required companies - cannot test offer system")
-        offer_system_success = False
-        partnership_success = False
+        print("⚠️  Missing required companies - cannot test supplier ecosystem")
+        supplier_system_success = False
 
     # Print results
     print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
-    # Summary of offer system test
-    if tester.corporate_company_id and tester.catering_company_id:
-        print("\n🎯 OFFER SYSTEM TEST SUMMARY:")
-        print(f"   🎯 Offer System: {'✅ WORKING' if offer_system_success else '❌ ISSUES'}")
-        print(f"   🤝 Partnership APIs: {'✅ WORKING' if partnership_success else '❌ ISSUES'}")
+    # Summary of supplier ecosystem test
+    if tester.supplier_company_id and tester.catering_company_id:
+        print("\n🎯 SUPPLIER ECOSYSTEM TEST SUMMARY:")
+        print(f"   🏭 Supplier System: {'✅ WORKING' if supplier_system_success else '❌ ISSUES'}")
     
-    if offer_system_success:
-        print("🎉 OFFER SYSTEM APIs ARE WORKING CORRECTLY!")
+    if supplier_system_success:
+        print("🎉 SUPPLIER ECOSYSTEM APIs ARE WORKING CORRECTLY!")
         return 0
     else:
-        print("⚠️  OFFER SYSTEM HAS ISSUES!")
+        print("⚠️  SUPPLIER ECOSYSTEM HAS ISSUES!")
         return 1
 
 if __name__ == "__main__":
