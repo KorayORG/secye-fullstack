@@ -293,6 +293,25 @@ const CateringManagement = ({ companyId, userRole }) => {
                   </div>
                   
                   <div className="space-y-2">
+                    <Label htmlFor="duration_months">Anlaşma Süresi</Label>
+                    <Select 
+                      value={offerForm.duration_months.toString()} 
+                      onValueChange={(value) => setOfferForm({...offerForm, duration_months: parseInt(value)})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Süre seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 Ay</SelectItem>
+                        <SelectItem value="6">6 Ay</SelectItem>
+                        <SelectItem value="12">12 Ay (1 Yıl)</SelectItem>
+                        <SelectItem value="24">24 Ay (2 Yıl)</SelectItem>
+                        <SelectItem value="36">36 Ay (3 Yıl)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
                     <Label htmlFor="message">Mesaj (Opsiyonel)</Label>
                     <Textarea
                       id="message"
