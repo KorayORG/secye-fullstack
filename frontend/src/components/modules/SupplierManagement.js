@@ -188,6 +188,77 @@ const SupplierManagement = ({ companyId, userRole }) => {
         <p className="text-gray-600">Anlaşmalı tedarikçilerinizi görüntüleyin ve sipariş verin</p>
       </div>
 
+      {/* Termination Dialog */}
+      <Dialog open={showTerminationDialog} onOpenChange={setShowTerminationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-red-600">
+              <Ban className="w-5 h-5 mr-2" />
+              Tedarikçi Anlaşması Feshi
+            </DialogTitle>
+            <DialogDescription>
+              {selectedSupplier?.name} ile anlaşmayı feshetmek istiyorsunuz
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason">Fesih Nedeni (Zorunlu)</Label>
+              <Input
+                id="reason"
+                placeholder="Örn: Kalite sorunu, teslimat gecikmeleri..."
+                value={terminationForm.reason}
+                onChange={(e) => setTerminationForm({...terminationForm, reason: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="message">Açıklama Mesajı (Zorunlu)</Label>
+              <Textarea
+                id="message"
+                placeholder="Fesih kararınız hakkında detaylı açıklama..."
+                value={terminationForm.message}
+                onChange={(e) => setTerminationForm({...terminationForm, message: e.target.value})}
+                rows={4}
+              />
+            </div>
+            
+            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+              <p className="text-sm text-yellow-800">
+                ⚠️ Bu fesih talebi karşı tarafa gönderilecektir. Onaylandıktan sonra anlaşma sona erecektir.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowTerminationDialog(false)}
+                disabled={terminationLoading}
+              >
+                İptal
+              </Button>
+              <Button 
+                onClick={handleSendTerminationRequest}
+                disabled={terminationLoading}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {terminationLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Gönderiliyor...
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 mr-2" />
+                    Fesih Talebi Gönder
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Alerts */}
       {error && (
         <Alert className="border-red-200 bg-red-50">
