@@ -167,8 +167,41 @@ class Offer(BaseModel):
     unit_price: float
     message: Optional[str] = None
     status: Literal['sent', 'accepted', 'rejected', 'updated'] = 'sent'
+    # Contract duration fields
+    duration_months: Optional[int] = 12  # Default 12 months
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Contract(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    partnership_id: str
+    corporate_id: str
+    catering_id: str
+    unit_price: float
+    start_date: datetime
+    end_date: datetime
+    duration_months: int
+    status: Literal['active', 'expired', 'terminated', 'pending_termination'] = 'active'
+    original_offer_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TerminationRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    contract_id: str
+    partnership_id: str
+    requesting_company_id: str  # Who initiated the termination
+    target_company_id: str      # Who needs to approve
+    reason: str                 # Required reason
+    message: str               # Required message
+    status: Literal['pending', 'approved', 'rejected'] = 'pending'
+    requested_termination_date: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
 
 # Request/Response models
 class LoginRequest(BaseModel):
