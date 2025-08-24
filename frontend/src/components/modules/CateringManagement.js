@@ -155,7 +155,7 @@ const CateringManagement = ({ companyId, userRole }) => {
       
       setSuccess(`${selectedCatering.name} firmasına teklif gönderildi`);
       setShowOfferDialog(false);
-      setOfferForm({ unit_price: '', message: '' });
+      setOfferForm({ unit_price: '', message: '', duration_months: 12 });
       setSelectedCatering(null);
       
     } catch (err) {
