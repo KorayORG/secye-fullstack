@@ -168,7 +168,7 @@ const CateringManagement = ({ companyId, userRole }) => {
 
   const handleOpenOfferDialog = (catering) => {
     setSelectedCatering(catering);
-    setOfferForm({ unit_price: '', message: '' });
+    setOfferForm({ unit_price: '', message: '', duration_months: 12 });
     setShowOfferDialog(true);
   };
 
