@@ -1786,8 +1786,8 @@ class SecYeAPITester:
         return critical_success
 
     def create_test_companies(self):
-        """Create test companies for offer system testing"""
-        print("\n🏗️  Creating test companies for offer system testing...")
+        """Create test companies for supplier ecosystem testing"""
+        print("\n🏗️  Creating test companies for supplier ecosystem testing...")
         
         # Create corporate company
         corporate_data = {
@@ -1851,11 +1851,43 @@ class SecYeAPITester:
             data=catering_data
         )
         
-        if success1 and success2:
+        # Create supplier company
+        supplier_data = {
+            "mode": "new",
+            "target": {
+                "mode": "new",
+                "company_type": "supplier",
+                "new_company_payload": {
+                    "name": f"Test Tedarikçi Firması {datetime.now().strftime('%H%M%S')}",
+                    "address": "Test Mahallesi, Tedarikçi Sokak No:3, İstanbul",
+                    "contact_phone": "+902125555555",
+                    "owner_full_name": "Mehmet Tedarikçi",
+                    "owner_phone": f"+9055{datetime.now().strftime('%H%M%S')}0003",
+                    "owner_email": "mehmet@testsupplier.com"
+                }
+            },
+            "applicant": {
+                "full_name": "Mehmet Tedarikçi",
+                "phone": f"+9055{datetime.now().strftime('%H%M%S')}0003",
+                "email": "mehmet@testsupplier.com"
+            },
+            "password": "TestPass123!"
+        }
+        
+        success3, response3 = self.run_test(
+            "Create Test Supplier Company",
+            "POST",
+            "auth/register/corporate/application",
+            200,
+            data=supplier_data
+        )
+        
+        if success1 and success2 and success3:
             print("✅ Test companies created successfully")
             # Now search for them to get their IDs
             self.test_company_search("corporate", "Test Kurumsal")
             self.test_company_search("catering", "Test Catering")
+            self.test_company_search("supplier", "Test Tedarikçi")
             return True
         else:
             print("❌ Failed to create test companies")
