@@ -188,10 +188,42 @@ const CorporateManagement = ({ companyId, userRole }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Tabs */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Anlaşmalı Firmalar</h2>
-        <p className="text-gray-600">Catering hizmeti verdiğiniz firmaları görüntüleyin ve yönetin</p>
+        <h2 className="text-2xl font-bold text-gray-900">Firmalar Yönetimi</h2>
+        <p className="text-gray-600">Tüm corporate firmaları görüntüleyin ve anlaşmalı firmaları yönetin</p>
+        
+        {/* Tab Buttons */}
+        <div className="mt-4 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'all'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Tüm Firmalar
+              <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2.5 rounded-full text-xs font-medium">
+                {allCorporateCompanies.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('agreements')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'agreements'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Anlaşmalı Firmalar
+              <span className="ml-2 bg-green-100 text-green-800 py-0.5 px-2.5 rounded-full text-xs font-medium">
+                {corporateCompanies.length}
+              </span>
+            </button>
+          </nav>
+        </div>
       </div>
 
       {/* Termination Dialog */}
