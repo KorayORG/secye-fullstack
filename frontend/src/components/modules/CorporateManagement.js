@@ -58,7 +58,11 @@ const CorporateManagement = ({ companyId, userRole }) => {
 
   useEffect(() => {
     loadData();
-  }, [companyId]);
+    if (mainTab === 'offers') {
+      loadOffers();
+      loadTerminationRequests();
+    }
+  }, [companyId, mainTab]);
 
   const loadData = async () => {
     setLoading(true);
@@ -112,6 +116,85 @@ const CorporateManagement = ({ companyId, userRole }) => {
       setError('Veriler yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadOffers = async () => {
+    setOffersLoading(true);
+    
+    try {
+      const response = await axios.get(`${API}/catering/${companyId}/offers`, {
+        params: {
+          offer_type: 'received',
+          limit: 50
+        }
+      });
+      
+      setOffers(response.data.offers || []);
+    } catch (err) {
+      console.error('Offers loading error:', err);
+      setError('Teklifler yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setOffersLoading(false);
+    }
+  };
+
+  const loadTerminationRequests = async () => {
+    try {
+      const response = await axios.get(`${API}/catering/${companyId}/termination-requests`, {
+        params: {
+          request_type: 'received',
+          limit: 10
+        }
+      });
+      
+      setTerminationRequests(response.data.termination_requests || []);
+    } catch (err) {
+      console.error('Termination requests loading error:', err);
+      // Don't show error for termination requests as it's secondary feature
+    }
+  };
+
+  const handleOfferResponse = async (offerId, action) => {
+    if (!window.confirm(`Bu teklifi ${action === 'accept' ? 'kabul' : 'red'} etmek istediğinizden emin misiniz?`)) {
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.put(`${API}/catering/${companyId}/offers/${offerId}`, {
+        action
+      });
+      
+      setSuccess(`Teklif ${action === 'accept' ? 'kabul edildi' : 'reddedildi'}`);
+      loadOffers(); // Reload offers
+      loadData(); // Reload partnerships if accepted
+    } catch (err) {
+      console.error('Offer response error:', err);
+      setError('Teklif yanıtlanırken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  const handleTerminationResponse = async (requestId, action) => {
+    if (!window.confirm(`Bu fesih talebini ${action === 'approve' ? 'onaylamak' : 'reddetmek'} istediğinizden emin misiniz?`)) {
+      return;
+    }
+
+    try {
+      await axios.put(`${API}/catering/${companyId}/termination-requests/${requestId}`, {
+        action
+      });
+      
+      setSuccess(`Fesih talebi ${action === 'approve' ? 'onaylandı' : 'reddedildi'}`);
+      loadTerminationRequests();
+      if (action === 'approve') {
+        loadData(); // Reload partnerships
+      }
+    } catch (err) {
+      console.error('Termination response error:', err);
+      setError('Fesih talebi yanıtlanırken hata oluştu: ' + (err.response?.data?.detail || err.message));
     }
   };
 
