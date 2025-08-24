@@ -3423,10 +3423,11 @@ async def respond_to_offer(
             }
         )
         
-        # If accepted, create partnership
+        # If accepted, create partnership and contract
         if action == "accept":
+            partnership_id = str(uuid.uuid4())
             partnership = {
-                "id": str(uuid.uuid4()),
+                "id": partnership_id,
                 "corporate_id": offer["from_company_id"],
                 "catering_id": company_id,
                 "partnership_type": "catering",
@@ -3445,6 +3446,32 @@ async def respond_to_offer(
             
             if not existing_partnership:
                 await db.partnerships.insert_one(partnership)
+                
+                # Create contract with duration from offer
+                start_date = offer.get("start_date", datetime.now(timezone.utc))
+                end_date = offer.get("end_date")
+                duration_months = offer.get("duration_months", 12)
+                
+                # If end_date not in offer, calculate it
+                if not end_date:
+                    end_date = start_date + timedelta(days=duration_months * 30)
+                
+                contract = {
+                    "id": str(uuid.uuid4()),
+                    "partnership_id": partnership_id,
+                    "corporate_id": offer["from_company_id"],
+                    "catering_id": company_id,
+                    "unit_price": offer["unit_price"],
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "duration_months": duration_months,
+                    "status": "active",
+                    "original_offer_id": offer_id,
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+                
+                await db.contracts.insert_one(contract)
         
         # Log the action
         audit_log = {
