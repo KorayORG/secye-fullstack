@@ -1355,6 +1355,85 @@ class SecYeAPITester:
             print("❌ Failed to create test companies")
             return False
 
+    def admin_login(self):
+        """Login as admin to approve applications"""
+        print("\n🔐 Admin login...")
+        
+        # Admin credentials from .env
+        admin_username = "oL-;&&hG(QZr~nn|4_*tA4U$j;NH9?E$ApqxQH1'Qc,kBzjHNrpEV;E.^q:%.Zn"
+        admin_password = "!}%bKW|^?q'MwBJU>TlV`NAe9-G-+nP/WLtx79)KmKyCimBdAj5v7R=FxDjU|`v"
+        
+        success, response = self.run_test(
+            "Admin Login",
+            "POST",
+            "admin/login",
+            200,
+            data={
+                "username": admin_username,
+                "password": admin_password
+            }
+        )
+        
+        if success and response.get('token'):
+            self.admin_token = response['token']
+            print(f"   ✅ Admin token obtained")
+            return True
+        else:
+            print("   ❌ Admin login failed")
+            return False
+
+    def approve_applications(self):
+        """Approve pending applications to create companies"""
+        if not self.admin_token:
+            print("❌ No admin token available")
+            return False
+        
+        print("\n📋 Approving applications...")
+        
+        # Get application IDs from the previous test responses
+        # We'll need to query the database to get them
+        import asyncio
+        from motor.motor_asyncio import AsyncIOMotorClient
+        import os
+        from dotenv import load_dotenv
+
+        load_dotenv('backend/.env')
+        mongo_url = os.environ['MONGO_URL']
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[os.environ['DB_NAME']]
+
+        async def get_applications():
+            applications = await db.corporate_applications.find({"status": "pending"}).to_list(None)
+            return applications
+
+        applications = asyncio.run(get_applications())
+        
+        approved_count = 0
+        for app in applications:
+            app_id = app['id']
+            company_name = app['target']['new_company_payload']['name']
+            
+            success, response = self.run_test(
+                f"Approve Application - {company_name}",
+                "POST",
+                f"admin/applications/{app_id}/update",
+                200,
+                data={
+                    "status": "approved",
+                    "notes": "Auto-approved for testing"
+                },
+                headers={"Authorization": f"Bearer {self.admin_token}"}
+            )
+            
+            if success:
+                approved_count += 1
+                print(f"   ✅ Approved: {company_name}")
+            else:
+                print(f"   ❌ Failed to approve: {company_name}")
+        
+        print(f"   📊 Approved {approved_count}/{len(applications)} applications")
+        return approved_count > 0
+
 def main():
     print("🚀 Starting Seç Ye API Tests - OFFER SYSTEM FOCUS")
     print("=" * 60)
