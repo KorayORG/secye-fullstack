@@ -1,4 +1,6 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Request, Response, UploadFile, File
+
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, Request, Response, UploadFile, File, Query
+from bson import ObjectId
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,7 +49,82 @@ except Exception:
 
 # Create the main app
 app = FastAPI(title="Seç Ye API", version="1.0.0")
+
+
 api_router = APIRouter(prefix="/api")
+
+
+
+# ===== ORDERS LIST API (CATERING & SUPPLIER) =====
+@api_router.get("/orders")
+async def get_orders(
+    catering_id: Optional[str] = Query(None),
+    supplier_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(100),
+    offset: int = Query(0)
+):
+    """
+    Belirli bir catering veya tedarikçi şirketinin siparişlerini listeler.
+    catering_id veya supplier_id parametrelerinden en az biri gereklidir.
+    """
+    try:
+        if not catering_id and not supplier_id:
+            raise HTTPException(status_code=400, detail="catering_id veya supplier_id gereklidir")
+
+        filter_query = {}
+        if catering_id:
+            # Catering şirketi kontrolü
+            catering = await db.companies.find_one({"id": catering_id, "type": "catering", "is_active": True})
+            if not catering:
+                raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+            filter_query["catering_id"] = catering_id
+        if supplier_id:
+            # Tedarikçi şirketi kontrolü
+            supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+            if not supplier:
+                raise HTTPException(status_code=404, detail="Tedarikçi firması bulunamadı")
+            filter_query["supplier_id"] = supplier_id
+        if status and status != "all":
+            filter_query["status"] = status
+
+        orders = await db.orders.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        has_more = len(orders) > limit
+        if has_more:
+            orders = orders[:-1]
+
+        # Şirket isimlerini ekle
+        supplier_ids = list({order["supplier_id"] for order in orders})
+        catering_ids = list({order["catering_id"] for order in orders})
+        suppliers = {s["id"]: s for s in await db.companies.find({"id": {"$in": supplier_ids}}).to_list(None)}
+        caterings = {c["id"]: c for c in await db.companies.find({"id": {"$in": catering_ids}}).to_list(None)}
+
+        def serialize(obj):
+            if isinstance(obj, ObjectId):
+                return str(obj)
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return obj
+
+        result_orders = []
+        for order in orders:
+            supplier = suppliers.get(order["supplier_id"])
+            catering = caterings.get(order["catering_id"])
+            order_serialized = {k: serialize(v) for k, v in order.items()}
+            order_serialized["supplier_company_name"] = supplier["name"] if supplier else order["supplier_id"]
+            order_serialized["buyer_company_name"] = catering["name"] if catering else order["catering_id"]
+            order_serialized["created_at"] = serialize(order.get("created_at"))
+            # items alanı yoksa boş dizi olarak ekle
+            if "items" not in order_serialized:
+                order_serialized["items"] = []
+            result_orders.append(order_serialized)
+
+        return {"orders": result_orders, "total": len(result_orders), "has_more": has_more}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get orders error: {e}")
+        raise HTTPException(status_code=500, detail="Siparişler alınamadı")
 
 # CORS middleware
 app.add_middleware(
@@ -5101,7 +5178,89 @@ async def update_supplier_order_status(
             detail="Sipariş durumu güncellenemedi"
         )
 
+from fastapi import Body
 # ===== CATERING SUPPLIER SHOPPING APIs =====
+@api_router.post("/catering/{catering_id}/suppliers/{supplier_id}/orders")
+async def create_order_for_catering_supplier(
+    catering_id: str,
+    supplier_id: str,
+    request: dict = Body(...)
+):
+    """Catering şirketi için tedarikçiden sipariş oluştur"""
+    try:
+        # Catering ve tedarikçi kontrolü
+        catering = await db.companies.find_one({"id": catering_id, "type": "catering", "is_active": True})
+        if not catering:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+
+        items = request.get("items", [])
+        notes = request.get("notes", "")
+        if not items or not isinstance(items, list):
+            raise HTTPException(status_code=400, detail="Sipariş ürünleri eksik veya hatalı")
+
+        # Sipariş kalemlerini ve toplam tutarı hazırla
+        order_items = []
+        total_amount = 0.0
+        for item in items:
+            product_id = item.get("product_id")
+            quantity = item.get("quantity")
+            if not product_id or not quantity or quantity <= 0:
+                raise HTTPException(status_code=400, detail="Ürün veya miktar hatalı")
+            product = await db.products.find_one({"id": product_id, "supplier_id": supplier_id, "is_active": True})
+            if not product:
+                raise HTTPException(status_code=404, detail=f"Ürün bulunamadı: {product_id}")
+            unit_price = product["unit_price"]
+            total_price = unit_price * quantity
+            total_amount += total_price
+            order_items.append({
+                "id": str(uuid.uuid4()),
+                "product_id": product_id,
+                "quantity": quantity,
+                "unit_price": unit_price,
+                "total_price": total_price
+            })
+
+        order_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+        order_doc = {
+            "id": order_id,
+            "supplier_id": supplier_id,
+            "catering_id": catering_id,
+            "status": "pending",
+            "total_amount": total_amount,
+            "notes": notes,
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.orders.insert_one(order_doc)
+        for item in order_items:
+            item_doc = dict(item)
+            item_doc["order_id"] = order_id
+            await db.order_items.insert_one(item_doc)
+
+        # Log
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "ORDER_CREATED",
+            "company_id": catering_id,
+            "meta": {
+                "order_id": order_id,
+                "supplier_id": supplier_id,
+                "total_amount": total_amount
+            },
+            "created_at": now
+        }
+        await db.audit_logs.insert_one(audit_log)
+
+        return {"success": True, "message": "Sipariş başarıyla oluşturuldu", "order_id": order_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create order error: {e}")
+        raise HTTPException(status_code=500, detail="Sipariş oluşturulamadı")
 @api_router.get("/catering/{catering_id}/suppliers/{supplier_id}/products")
 async def get_supplier_products_for_catering(
     catering_id: str,

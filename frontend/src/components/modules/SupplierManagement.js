@@ -37,6 +37,9 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const SupplierManagement = ({ companyId, userRole }) => {
+  // Sipariş Detay Dialogu için state
+  const [showOrderDetailDialog, setShowOrderDetailDialog] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [partnerships, setPartnerships] = useState([]);
   const [supplierCompanies, setSupplierCompanies] = useState([]);
@@ -44,7 +47,10 @@ const SupplierManagement = ({ companyId, userRole }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'agreements'
+  const [activeTab, setActiveTab] = useState('all'); // 'all' veya 'orders'
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   
   // Shopping states
   const [selectedSupplier, setSelectedSupplier] = useState(null);
@@ -64,7 +70,25 @@ const SupplierManagement = ({ companyId, userRole }) => {
 
   useEffect(() => {
     loadData();
+    if (companyId) fetchOrders();
   }, [companyId]);
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    setError("");
+    try {
+      const res = await axios.get(`${API}/orders`, {
+        params: {
+          catering_id: companyId
+        }
+      });
+      setOrders(res.data.orders || []);
+    } catch (err) {
+      setError('Siparişler yüklenemedi: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -168,6 +192,7 @@ const SupplierManagement = ({ companyId, userRole }) => {
     }
   };
 
+
   const getCartTotal = () => {
     return storeProducts.reduce((total, product) => {
       const quantity = cart[product.id] || 0;
@@ -177,6 +202,33 @@ const SupplierManagement = ({ companyId, userRole }) => {
 
   const getCartItemCount = () => {
     return Object.values(cart).reduce((total, quantity) => total + quantity, 0);
+  };
+
+  // Sipariş Ver fonksiyonu
+  const handleCreateOrder = async () => {
+    console.log("Sipariş Ver butonu tıklandı", { selectedSupplier, cart, companyId });
+    if (!selectedSupplier || getCartItemCount() === 0) {
+      setError("Sepetiniz boş veya tedarikçi seçili değil.");
+      return;
+    }
+    setError("");
+    setSuccess("");
+    try {
+      const items = Object.entries(cart).map(([productId, quantity]) => ({
+        product_id: productId,
+        quantity
+      }));
+      console.log("Sipariş gönderiliyor", { items, url: `${API}/catering/${companyId}/suppliers/${selectedSupplier.id}/orders` });
+      const res = await axios.post(
+        `${API}/catering/${companyId}/suppliers/${selectedSupplier.id}/orders`,
+        { items }
+      );
+      setSuccess("Sipariş başarıyla oluşturuldu!");
+      setCart({});
+    } catch (err) {
+      console.error("Sipariş oluşturulamadı", err, err.response);
+      setError("Sipariş oluşturulamadı: " + (err.response?.data?.detail || err.message || JSON.stringify(err)));
+    }
   };
 
   const handleOpenTerminationDialog = (supplier) => {
@@ -223,15 +275,22 @@ const SupplierManagement = ({ companyId, userRole }) => {
     }
   };
 
-  // Filtered data based on active tab and search
+
+  // Siparişlerim sekmesi için filtreli sipariş listesi
+  const getFilteredOrders = () => {
+    if (orderStatusFilter === 'all') return orders;
+    return orders.filter(order => order.status === orderStatusFilter);
+  };
+
+  // Tedarikçi listesi için mevcut fonksiyon
   const getFilteredSuppliers = () => {
-    const suppliers = activeTab === 'all' ? allSupplierCompanies : supplierCompanies;
-    return suppliers.filter(supplier =>
+    return allSupplierCompanies.filter(supplier =>
       supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
   const filteredSuppliers = getFilteredSuppliers();
+  const filteredOrders = getFilteredOrders();
 
   const canManageSuppliers = () => {
     return userRole && (userRole.includes('Owner') || userRole.includes('4') || userRole.includes('3'));
@@ -258,7 +317,6 @@ const SupplierManagement = ({ companyId, userRole }) => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Tedarikçiler</h2>
         <p className="text-gray-600">Tüm tedarikçileri görüntüleyin ve mağazalarında alışveriş yapın</p>
-        
         {/* Tab Buttons */}
         <div className="mt-4 border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -276,16 +334,16 @@ const SupplierManagement = ({ companyId, userRole }) => {
               </span>
             </button>
             <button
-              onClick={() => setActiveTab('agreements')}
+              onClick={() => setActiveTab('orders')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'agreements'
+                activeTab === 'orders'
                   ? 'border-orange-500 text-orange-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Anlaşmalı Tedarikçiler
-              <span className="ml-2 bg-green-100 text-green-800 py-0.5 px-2.5 rounded-full text-xs font-medium">
-                {supplierCompanies.length}
+              Siparişlerim
+              <span className="ml-2 bg-blue-100 text-blue-800 py-0.5 px-2.5 rounded-full text-xs font-medium">
+                {orders.length}
               </span>
             </button>
           </nav>
@@ -445,7 +503,7 @@ const SupplierManagement = ({ companyId, userRole }) => {
                     <Button variant="outline" onClick={() => setCart({})}>
                       Sepeti Temizle
                     </Button>
-                    <Button className="bg-green-600 hover:bg-green-700">
+                    <Button className="bg-green-600 hover:bg-green-700" onClick={handleCreateOrder}>
                       <ShoppingCart className="w-4 h-4 mr-2" />
                       Sipariş Ver
                     </Button>
@@ -560,14 +618,14 @@ const SupplierManagement = ({ companyId, userRole }) => {
         </Card>
       )}
 
-      {/* Suppliers List */}
-      <div>
-        {filteredSuppliers.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Truck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              {activeTab === 'all' ? (
-                allSupplierCompanies.length === 0 ? (
+      {/* Tab Content */}
+      {activeTab === 'all' && (
+        <div>
+          {filteredSuppliers.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Truck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                {allSupplierCompanies.length === 0 ? (
                   <>
                     <h3 className="text-lg font-medium text-gray-600 mb-2">Henüz Tedarikçi Yok</h3>
                     <p className="text-sm text-gray-500">
@@ -578,56 +636,23 @@ const SupplierManagement = ({ companyId, userRole }) => {
                   <>
                     <p className="text-gray-500">Arama kriterinize uygun tedarikçi bulunamadı</p>
                   </>
-                )
-              ) : (
-                supplierCompanies.length === 0 ? (
-                  <>
-                    <h3 className="text-lg font-medium text-gray-600 mb-2">Henüz Anlaşmalı Tedarikçi Yok</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Tedarikçilerden gelen teklifleri kabul ettiğinizde burada görünecekler
-                    </p>
-                    <div className="inline-flex items-center text-sm text-blue-600">
-                      <Heart className="w-4 h-4 mr-1" />
-                      <span>Teklifler sekmesinden gelen teklifleri kontrol edin</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-gray-500">Arama kriterinize uygun anlaşmalı tedarikçi bulunamadı</p>
-                  </>
-                )
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredSuppliers.map((supplier) => {
-              const isPartnerSupplier = isPartner(supplier.id);
-              return (
-                <Card key={supplier.id} className={`hover:shadow-md transition-shadow ${
-                  isPartnerSupplier ? 'border-green-200 bg-green-50' : 'border-gray-200'
-                }`}>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSuppliers.map((supplier) => (
+                <Card key={supplier.id} className="hover:shadow-md transition-shadow border-gray-200">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <CardTitle className="text-lg flex items-center">
-                          <Truck className={`w-5 h-5 mr-2 ${
-                            isPartnerSupplier ? 'text-green-600' : 'text-orange-600'
-                          }`} />
+                          <Truck className="w-5 h-5 mr-2 text-orange-600" />
                           {supplier.name}
                         </CardTitle>
                         <CardDescription>@{supplier.slug}</CardDescription>
                       </div>
-                      {isPartnerSupplier ? (
-                        <Badge className="bg-green-100 text-green-800">
-                          <Heart className="w-3 h-3 mr-1" />
-                          Anlaşmalı
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">
-                          Tedarikçi
-                        </Badge>
-                      )}
+                      <Badge variant="outline">Tedarikçi</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
@@ -643,7 +668,6 @@ const SupplierManagement = ({ companyId, userRole }) => {
                           </div>
                         </div>
                       )}
-                      
                       {supplier.phone && (
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Telefon:</span>
@@ -653,17 +677,6 @@ const SupplierManagement = ({ companyId, userRole }) => {
                           </span>
                         </div>
                       )}
-                      
-                      {isPartnerSupplier && supplier.partnership_created_at && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Anlaşma Tarihi:</span>
-                          <span className="font-medium flex items-center">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            {new Date(supplier.partnership_created_at).toLocaleDateString('tr-TR')}
-                          </span>
-                        </div>
-                      )}
-                      
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Kayıt Tarihi:</span>
                         <span className="font-medium flex items-center">
@@ -671,7 +684,6 @@ const SupplierManagement = ({ companyId, userRole }) => {
                           {new Date(supplier.created_at).toLocaleDateString('tr-TR')}
                         </span>
                       </div>
-                      
                       {canManageSuppliers() && (
                         <div className="flex space-x-2 pt-2">
                           <Button 
@@ -683,27 +695,108 @@ const SupplierManagement = ({ companyId, userRole }) => {
                             <Store className="w-4 h-4 mr-1" />
                             Mağazaya Git
                           </Button>
-                          {isPartnerSupplier && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenTerminationDialog(supplier)}
-                              className="text-red-600 hover:text-red-700 hover:border-red-300"
-                            >
-                              <Ban className="w-4 h-4 mr-1" />
-                              Fesih
-                            </Button>
-                          )}
                         </div>
                       )}
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'orders' && (
+        <div>
+          {/* Siparişlerim Filtre */}
+          <div className="flex items-center space-x-2 mb-4">
+            <span className="font-medium">Filtrele:</span>
+            <select
+              className="border rounded px-2 py-1 text-sm"
+              value={orderStatusFilter}
+              onChange={e => setOrderStatusFilter(e.target.value)}
+            >
+              <option value="all">Tümü</option>
+              <option value="pending">Beklemede</option>
+              <option value="confirmed">İşleme Alındı</option>
+              <option value="preparing">Hazırlanıyor</option>
+              <option value="delivered">Teslim Edildi</option>
+              <option value="cancelled">İptal Edildi</option>
+            </select>
           </div>
-        )}
-      </div>
+          {ordersLoading ? (
+            <div className="text-center p-8 text-gray-500">Siparişler yükleniyor...</div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center p-8 text-gray-500">Sipariş bulunamadı</div>
+          ) : (
+            <div className="space-y-4">
+              {filteredOrders.map(order => (
+                <Card key={order.id}>
+                  <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="font-medium text-lg">{order.supplier_company_name || order.supplier_id}</div>
+                      <div className="text-sm text-gray-600">Toplam: ₺{order.total_amount?.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500">Oluşturulma: {order.created_at ? new Date(order.created_at).toLocaleString('tr-TR') : ''}</div>
+                      <div className="text-xs text-gray-500">Durum: {order.status}</div>
+                    </div>
+                    <div className="mt-2 md:mt-0">
+                      <Button size="sm" variant="outline" onClick={() => { setSelectedOrder(order); setShowOrderDetailDialog(true); }}>Detay</Button>
+                    </div>
+      {/* Sipariş Detay Dialogu */}
+      <Dialog open={showOrderDetailDialog} onOpenChange={setShowOrderDetailDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sipariş Detayları</DialogTitle>
+            <DialogDescription>
+              {selectedOrder && (
+                <div className="space-y-2 mt-2">
+                  <div>
+                    <span className="font-medium">Tedarikçi:</span> {selectedOrder.supplier_company_name || selectedOrder.supplier_id}
+                  </div>
+                  <div>
+                    <span className="font-medium">Toplam Tutar:</span> ₺{selectedOrder.total_amount?.toFixed(2)}
+                  </div>
+                  <div>
+                    <span className="font-medium">Durum:</span> {selectedOrder.status}
+                  </div>
+                  <div>
+                    <span className="font-medium">Oluşturulma:</span> {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('tr-TR') : ''}
+                  </div>
+                  {selectedOrder.delivery_address && (
+                    <div>
+                      <span className="font-medium">Teslimat Adresi:</span> {selectedOrder.delivery_address}
+                    </div>
+                  )}
+                  {selectedOrder.notes && (
+                    <div>
+                      <span className="font-medium">Not:</span> {selectedOrder.notes}
+                    </div>
+                  )}
+                  {selectedOrder.items && Array.isArray(selectedOrder.items) && (
+                    <div>
+                      <span className="font-medium">Ürünler:</span>
+                      <ul className="list-disc ml-6 mt-1">
+                        {selectedOrder.items.map((item, idx) => (
+                          <li key={idx} className="text-sm">
+                            {item.product_id} - {item.quantity} x ₺{item.unit_price?.toFixed(2)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

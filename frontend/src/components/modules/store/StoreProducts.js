@@ -1,7 +1,13 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader } from '../../ui/dialog';
+import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { Textarea } from '../../ui/textarea';
+import * as Select from '../../ui/select';
 
 const initialForm = {
   name: '',
@@ -123,12 +129,54 @@ const StoreProducts = ({ companyId }) => {
   return (
     <div>
       <h3 className="text-xl font-semibold mb-2">Ürünler</h3>
-      <button
-        className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
-        onClick={() => handleOpenForm()}
-      >
-        Ürün Ekle
-      </button>
+
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogTrigger asChild>
+          <Button variant="default" size="default" className="mb-4" onClick={() => handleOpenForm()}>
+            Ürün Ekle
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <h4 className="text-lg font-bold mb-4">{editId !== null ? 'Ürünü Düzenle' : 'Ürün Ekle'}</h4>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block mb-1 font-medium">Ürün Adı</label>
+              <Input type="text" name="name" value={form.name} onChange={handleChange} required placeholder="Ürün adı" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Açıklama</label>
+              <Textarea name="description" value={form.description} onChange={handleChange} required placeholder="Ürün açıklaması" />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block mb-1 font-medium">Fiyat</label>
+                <Input type="number" name="price" value={form.price} onChange={handleChange} required min="0" step="0.01" placeholder="0.00" />
+              </div>
+              <div className="flex-1">
+                <label className="block mb-1 font-medium">Miktar</label>
+                <Input type="number" name="quantity" value={form.quantity} onChange={handleChange} required min="0" step="0.01" placeholder="0" />
+              </div>
+              <div className="w-32">
+                <label className="block mb-1 font-medium">Birim</label>
+                <Select.Select name="unit" value={form.unit} onValueChange={val => setForm(f => ({ ...f, unit: val }))}>
+                  <Select.SelectTrigger>
+                    <Select.SelectValue placeholder="Birim" />
+                  </Select.SelectTrigger>
+                  <Select.SelectContent>
+                    {units.map((u) => (
+                      <Select.SelectItem key={u} value={u}>{u}</Select.SelectItem>
+                    ))}
+                  </Select.SelectContent>
+                </Select.Select>
+              </div>
+            </div>
+            <Button type="submit" variant="default" size="default" className="w-full mt-2 font-semibold">Kaydet</Button>
+            {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Ürün Listesi */}
       <div className="overflow-x-auto">
@@ -165,42 +213,7 @@ const StoreProducts = ({ companyId }) => {
         </table>
       </div>
 
-      {/* Ürün Ekle/Düzenle Formu Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md relative">
-            <button className="absolute top-2 right-2 text-gray-500" onClick={handleCloseForm}>×</button>
-            <h4 className="text-lg font-bold mb-4">{editId !== null ? 'Ürünü Düzenle' : 'Ürün Ekle'}</h4>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="block mb-1">Ürün Adı</label>
-                <input type="text" name="name" value={form.name} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
-              </div>
-              <div>
-                <label className="block mb-1">Açıklama</label>
-                <textarea name="description" value={form.description} onChange={handleChange} required className="w-full border rounded px-2 py-1" />
-              </div>
-              <div>
-                <label className="block mb-1">Fiyat</label>
-                <input type="number" name="price" value={form.price} onChange={handleChange} required min="0" step="0.01" className="w-full border rounded px-2 py-1" />
-              </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block mb-1">Miktar</label>
-                  <input type="number" name="quantity" value={form.quantity} onChange={handleChange} required min="0" step="0.01" className="w-full border rounded px-2 py-1" />
-                </div>
-                <div>
-                  <label className="block mb-1">Birim</label>
-                  <select name="unit" value={form.unit} onChange={handleChange} className="border rounded px-2 py-1">
-                    {units.map((u) => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-              <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded w-full mt-2">Kaydet</button>
-            </form>
-          </div>
-        </div>
-      )}
+  {/* ... */}
     </div>
   );
 };
