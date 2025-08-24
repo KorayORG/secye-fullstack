@@ -149,7 +149,8 @@ const CateringManagement = ({ companyId, userRole }) => {
       await axios.post(`${API}/corporate/${companyId}/offers`, {
         catering_id: selectedCatering.id,
         unit_price: parseFloat(offerForm.unit_price),
-        message: offerForm.message
+        message: offerForm.message,
+        duration_months: parseInt(offerForm.duration_months)
       });
       
       setSuccess(`${selectedCatering.name} firmasına teklif gönderildi`);
