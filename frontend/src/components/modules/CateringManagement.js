@@ -43,6 +43,15 @@ const CateringManagement = ({ companyId, userRole }) => {
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  
+  // Offer dialog states
+  const [showOfferDialog, setShowOfferDialog] = useState(false);
+  const [selectedCatering, setSelectedCatering] = useState(null);
+  const [offerForm, setOfferForm] = useState({
+    unit_price: '',
+    message: ''
+  });
+  const [offerLoading, setOfferLoading] = useState(false);
 
   useEffect(() => {
     loadCaterings();
