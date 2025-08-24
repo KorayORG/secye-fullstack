@@ -399,6 +399,7 @@ const CateringManagement = ({ companyId, userRole }) => {
               </div>
             </DialogContent>
           </Dialog>
+          </>
         )}
       </div>
 
