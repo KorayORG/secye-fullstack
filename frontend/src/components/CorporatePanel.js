@@ -136,6 +136,7 @@ const CorporatePanel = () => {
         { id: 'general', label: 'Genel', icon: BarChart3 },
         { id: 'employees', label: 'Çalışanlar', icon: Users },
         { id: 'shifts', label: 'Vardiyalar', icon: Clock },
+        { id: 'offers', label: 'Teklifler', icon: FileText },
         { id: 'system', label: 'Sistem', icon: Settings },
         { id: 'caterings', label: 'Catering Firmaları', icon: Building2 },
         { id: 'mail', label: 'Mail', icon: Mail }
