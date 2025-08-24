@@ -969,109 +969,6 @@ const StorefrontManagement = ({ companyId, userRole }) => {
               )}
             </DialogContent>
           </Dialog>
-                    </div>
-                    
-                    <div>
-                      <h4 className="font-medium mb-2">Teslimat Bilgileri</h4>
-                      <div className="space-y-2 text-sm">
-                        {selectedOrder.delivery_address && (
-                          <div>
-                            <span className="text-gray-600">Adres:</span>
-                            <p className="text-sm mt-1">{selectedOrder.delivery_address}</p>
-                          </div>
-                        )}
-                        {selectedOrder.delivery_date && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Teslimat Tarihi:</span>
-                            <span>{new Date(selectedOrder.delivery_date).toLocaleString('tr-TR')}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {selectedOrder.notes && (
-                    <div>
-                      <h4 className="font-medium mb-2">Notlar</h4>
-                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{selectedOrder.notes}</p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Sipariş Ürünleri</h4>
-                    <div className="space-y-2">
-                      {selectedOrder.items?.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                          <div>
-                            <p className="font-medium">{item.product_name}</p>
-                            <p className="text-sm text-gray-600">
-                              {item.quantity} {item.product_unit_type} × ₺{item.unit_price?.toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">₺{item.total_price?.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {selectedOrder.status === 'pending' && (
-                    <div className="flex space-x-2 pt-4">
-                      <Button 
-                        onClick={() => {
-                          handleUpdateOrderStatus(selectedOrder.id, 'confirmed');
-                          setShowOrderDialog(false);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        Siparişi Onayla
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          handleUpdateOrderStatus(selectedOrder.id, 'cancelled');
-                          setShowOrderDialog(false);
-                        }}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Siparişi İptal Et
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {selectedOrder.status === 'confirmed' && (
-                    <div className="flex space-x-2 pt-4">
-                      <Button 
-                        onClick={() => {
-                          handleUpdateOrderStatus(selectedOrder.id, 'preparing');
-                          setShowOrderDialog(false);
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        Hazırlanıyor Olarak İşaretle
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {selectedOrder.status === 'preparing' && (
-                    <div className="flex space-x-2 pt-4">
-                      <Button 
-                        onClick={() => {
-                          handleUpdateOrderStatus(selectedOrder.id, 'delivered');
-                          setShowOrderDialog(false);
-                        }}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        Teslim Edildi Olarak İşaretle
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-
           {/* Orders List */}
           {filteredOrders.length === 0 ? (
             <Card>
@@ -1097,18 +994,33 @@ const StorefrontManagement = ({ companyId, userRole }) => {
                             {getStatusLabel(order.status)}
                           </Badge>
                         </div>
-                        <p className="text-gray-600 mb-1">{order.catering_company_name}</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(order.created_at).toLocaleString('tr-TR')}
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-gray-900 font-medium">{order.catering_company_name}</p>
+                          <p className="text-sm text-gray-500 flex items-center">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            {new Date(order.created_at).toLocaleString('tr-TR')}
+                          </p>
+                          {order.customer_phone && (
+                            <p className="text-sm text-blue-600 flex items-center">
+                              <Phone className="w-4 h-4 mr-1" />
+                              {order.customer_phone}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-semibold text-green-600">
                           ₺{order.total_amount?.toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {order.items?.length || 0} ürün
+                          {order.items?.length || 0} farklı ürün
                         </p>
+                        {order.delivery_address && (
+                          <p className="text-xs text-gray-400 mt-1 flex items-center justify-end">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            Adresli teslimat
+                          </p>
+                        )}
                       </div>
                     </div>
                   </CardContent>
