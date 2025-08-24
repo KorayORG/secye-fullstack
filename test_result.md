@@ -342,11 +342,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Employee Management Component"
-    - "Shift Management Component"
-    - "Catering Companies Component"
-    - "System Settings Component"
-    - "Mail System Component"
+    - "Offer System - Corporate Panel"
+    - "Offer System - Catering Panel"
+    - "Partnership Verification System"
+    - "Login and Authentication System"
+    - "UI Components and Responsive Design"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
