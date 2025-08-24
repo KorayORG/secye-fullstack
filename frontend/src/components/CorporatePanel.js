@@ -25,6 +25,7 @@ import ShiftManagement from './modules/ShiftManagement';
 import SystemSettings from './modules/SystemSettings';
 import CateringManagement from './modules/CateringManagement';
 import MailSystem from './modules/MailSystem';
+import OfferManagement from './modules/OfferManagement';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
