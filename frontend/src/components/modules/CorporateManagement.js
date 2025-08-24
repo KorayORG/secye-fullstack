@@ -98,9 +98,6 @@ const CorporateManagement = ({ companyId, userRole }) => {
     return company.employee_count || Math.floor(Math.random() * 200) + 50;
   };
 
-    }
-  };
-
   const handleOpenTerminationDialog = (company) => {
     setSelectedCorporate(company);
     setTerminationForm({ reason: '', message: '' });
