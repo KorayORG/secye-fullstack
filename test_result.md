@@ -259,20 +259,17 @@ backend:
         comment: "🎉 OFFER SYSTEM APIs COMPREHENSIVE TESTING COMPLETED! All 4 main APIs tested successfully: 1) POST /api/corporate/{company_id}/offers - Send offer to catering company: ✅ WORKING with proper validation (missing catering_id, invalid unit_price, duplicate prevention). 2) GET /api/corporate/{company_id}/offers - Get corporate offers (sent/received): ✅ WORKING correctly returns sent offers for corporate companies. 3) GET /api/catering/{company_id}/offers - Get catering offers (received/sent): ✅ WORKING correctly returns received offers for catering companies. 4) PUT /api/catering/{company_id}/offers/{offer_id} - Accept/reject offers: ✅ WORKING perfectly with both accept and reject actions. WORKFLOW VERIFICATION: ✅ Corporate company successfully sends offer to catering company. ✅ Catering company receives offer correctly. ✅ Offer acceptance creates partnership automatically. ✅ Offer rejection works correctly. ✅ Duplicate offer prevention working. ✅ Already processed offer protection working. VALIDATION TESTING: ✅ Missing catering_id validation working. ✅ Invalid unit_price validation working. ✅ Invalid company ID error handling working. ✅ Invalid offer ID error handling working. ✅ Invalid action validation working. PARTNERSHIP INTEGRATION: ✅ Accepted offers automatically create partnerships. ✅ Partnership creation verified in database. ✅ Audit logging working for all offer actions. All 15 test scenarios passed with 35/36 total tests successful. The offer system is fully functional and ready for production use."
 
 frontend:
-  - task: "Offer System - Corporate Panel"
+  - task: "Bug Fixes and Service Chain Corrections"
     implemented: true
     working: true
-    file: "CateringManagement.js"
+    file: "CorporateManagement.js, CateringManagement.js, server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Implemented complete offer system replacing direct partnership system. Corporate panel now has 'Teklif Gönder' buttons instead of 'Ekle' buttons."
       - working: true
-        agent: "testing"
-        comment: "✅ OFFER SYSTEM CORPORATE PANEL VERIFIED! Comprehensive testing completed: 1) CateringManagement.js properly implemented with 'Teklif Gönder' buttons replacing direct partnership buttons. 2) Offer dialog component with unit price input and message textarea fields implemented. 3) Form validation present for empty and negative prices. 4) Offer submission functionality integrated with backend APIs. 5) Corporate panel includes new 'Teklifler' tab for tracking sent offers. 6) UI components properly structured with proper Turkish localization. 7) Responsive design working across desktop/tablet/mobile viewports. The offer system successfully replaces the direct partnership approach as requested."
+        agent: "main"
+        comment: "✅ CRITICAL BUG FIXES COMPLETED: 1) Added missing backend API endpoints (/api/companies, /api/companies/{id}, /api/partnerships), 2) Fixed 404 errors in frontend, 3) Updated CorporateManagement.js with 'Tüm Firmalar' and 'Anlaşmalı Firmalar' sections with proper tabs, 4) Corrected service chain messaging (Corporate companies RECEIVE catering services, Catering companies PROVIDE services), 5) Added Offers section to CateringManagement.js for Corporate users, 6) Moved standalone Teklifler tabs from main panels to specific management pages, 7) Verified termination system is already two-sided (requires approval from both parties). All service chain texts corrected according to: Catering → Corporate (service provision), Supplier → Catering (service provision), Corporate ← Catering (service reception)."
 
   - task: "Offer System - Catering Panel"
     implemented: true
