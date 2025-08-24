@@ -15,7 +15,8 @@ import {
   BarChart3,
   AlertTriangle,
   CheckCircle,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
 
 // Import module components
