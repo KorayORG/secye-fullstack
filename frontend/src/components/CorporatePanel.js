@@ -468,6 +468,15 @@ const CorporatePanel = () => {
             />
           </TabsContent>
 
+          {/* Offers Tab */}
+          <TabsContent value="offers">
+            <OfferManagement 
+              companyId={getCompanyIdFromPath()} 
+              userRole={userProfile?.role}
+              companyType="corporate"
+            />
+          </TabsContent>
+
           {/* System Settings Tab */}
           <TabsContent value="system">
             <SystemSettings 
