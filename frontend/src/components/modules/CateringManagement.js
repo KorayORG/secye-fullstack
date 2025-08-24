@@ -44,6 +44,11 @@ const CateringManagement = ({ companyId, userRole }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [mainTab, setMainTab] = useState('caterings'); // 'caterings' or 'offers'
+  
+  // Offers states
+  const [offers, setOffers] = useState([]);
+  const [offersLoading, setOffersLoading] = useState(false);
   
   // Dialog states
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -63,7 +68,10 @@ const CateringManagement = ({ companyId, userRole }) => {
   useEffect(() => {
     loadCaterings();
     loadPartnerships();
-  }, [companyId]);
+    if (mainTab === 'offers') {
+      loadOffers();
+    }
+  }, [companyId, mainTab]);
 
   const loadCaterings = async () => {
     setLoading(true);
