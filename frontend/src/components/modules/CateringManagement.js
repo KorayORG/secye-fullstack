@@ -104,6 +104,26 @@ const CateringManagement = ({ companyId, userRole }) => {
     }
   };
 
+  const loadOffers = async () => {
+    setOffersLoading(true);
+    
+    try {
+      const response = await axios.get(`${API}/corporate/${companyId}/offers`, {
+        params: {
+          offer_type: 'sent',  // Corporate companies send offers
+          limit: 50
+        }
+      });
+      
+      setOffers(response.data.offers || []);
+    } catch (err) {
+      console.error('Offers loading error:', err);
+      setError('Teklifler yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setOffersLoading(false);
+    }
+  };
+
   const searchCaterings = async (query) => {
     if (!query.trim()) {
       setSearchResults([]);
