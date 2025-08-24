@@ -132,10 +132,10 @@ const CateringManagement = ({ companyId, userRole }) => {
 
     setSearchLoading(true);
     try {
-      const response = await axios.get(`${API}/companies/search`, {
+      const response = await axios.get(`${API}/companies`, {
         params: {
           type: 'catering',
-          query: query,
+          search: query,
           limit: 20
         }
       });
