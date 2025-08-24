@@ -563,7 +563,153 @@ const StorefrontManagement = ({ companyId, userRole }) => {
           )}
         </TabsContent>
 
-        {/* Orders Tab */}
+        {/* Stock Management Tab */}
+        <TabsContent value="stock" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Stok Takip</h3>
+              <p className="text-gray-600">Ürünlerinizin mevcut stoklarını profesyonel arayüzle takip edin</p>
+            </div>
+            <div className="flex space-x-2">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                <Input
+                  placeholder="Ürün ara..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 w-64"
+                />
+              </div>
+            </div>
+          </div>
+
+          {filteredProducts.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-600 mb-2">Stok Takip Edilecek Ürün Yok</h3>
+                <p className="text-sm text-gray-500">
+                  Stok takibi için önce ürün eklemeniz gerekiyor
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Stok Durumu
+                </CardTitle>
+                <CardDescription>
+                  Toplam {filteredProducts.length} ürünün stok bilgileri
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left p-3 font-medium text-gray-900">Ürün Adı</th>
+                        <th className="text-left p-3 font-medium text-gray-900">Birim</th>
+                        <th className="text-left p-3 font-medium text-gray-900">Mevcut Stok</th>
+                        <th className="text-left p-3 font-medium text-gray-900">Birim Fiyat</th>
+                        <th className="text-left p-3 font-medium text-gray-900">Toplam Değer</th>
+                        <th className="text-left p-3 font-medium text-gray-900">Durum</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProducts.map((product) => {
+                        const totalValue = product.stock_quantity * product.unit_price;
+                        const isLowStock = product.stock_quantity < 10;
+                        const isOutOfStock = product.stock_quantity === 0;
+                        
+                        return (
+                          <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="p-3">
+                              <div>
+                                <p className="font-medium text-gray-900">{product.name}</p>
+                                <p className="text-sm text-gray-500">{product.category}</p>
+                              </div>
+                            </td>
+                            <td className="p-3 text-gray-600">{product.unit_type}</td>
+                            <td className="p-3">
+                              <span className={`font-medium ${
+                                isOutOfStock ? 'text-red-600' : 
+                                isLowStock ? 'text-orange-600' : 'text-green-600'
+                              }`}>
+                                {product.stock_quantity}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-600">
+                              ₺{product.unit_price.toFixed(2)}
+                            </td>
+                            <td className="p-3 font-medium text-gray-900">
+                              ₺{totalValue.toFixed(2)}
+                            </td>
+                            <td className="p-3">
+                              <Badge className={
+                                isOutOfStock ? 'bg-red-100 text-red-800' :
+                                isLowStock ? 'bg-orange-100 text-orange-800' : 
+                                'bg-green-100 text-green-800'
+                              }>
+                                {isOutOfStock ? 'Stok Yok' : 
+                                 isLowStock ? 'Az Stok' : 'Yeterli'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center">
+                        <Package className="w-6 h-6 text-blue-600" />
+                        <div className="ml-3">
+                          <p className="text-sm text-gray-600">Toplam Ürün</p>
+                          <p className="text-xl font-semibold">{filteredProducts.length}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center">
+                        <AlertTriangle className="w-6 h-6 text-orange-600" />
+                        <div className="ml-3">
+                          <p className="text-sm text-gray-600">Az Stoklu Ürün</p>
+                          <p className="text-xl font-semibold">
+                            {filteredProducts.filter(p => p.stock_quantity < 10 && p.stock_quantity > 0).length}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center">
+                        <DollarSign className="w-6 h-6 text-green-600" />
+                        <div className="ml-3">
+                          <p className="text-sm text-gray-600">Toplam Stok Değeri</p>
+                          <p className="text-xl font-semibold">
+                            ₺{filteredProducts.reduce((total, p) => total + (p.stock_quantity * p.unit_price), 0).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Orders Tab */}}
         <TabsContent value="orders" className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
