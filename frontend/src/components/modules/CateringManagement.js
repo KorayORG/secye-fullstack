@@ -132,6 +132,44 @@ const CateringManagement = ({ companyId, userRole }) => {
     }
   };
 
+  const handleSendOffer = async () => {
+    if (!selectedCatering) return;
+
+    if (!offerForm.unit_price || parseFloat(offerForm.unit_price) <= 0) {
+      setError('Lütfen geçerli bir birim fiyat girin');
+      return;
+    }
+
+    setOfferLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.post(`${API}/corporate/${companyId}/offers`, {
+        catering_id: selectedCatering.id,
+        unit_price: parseFloat(offerForm.unit_price),
+        message: offerForm.message
+      });
+      
+      setSuccess(`${selectedCatering.name} firmasına teklif gönderildi`);
+      setShowOfferDialog(false);
+      setOfferForm({ unit_price: '', message: '' });
+      setSelectedCatering(null);
+      
+    } catch (err) {
+      console.error('Send offer error:', err);
+      setError('Teklif gönderilirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setOfferLoading(false);
+    }
+  };
+
+  const handleOpenOfferDialog = (catering) => {
+    setSelectedCatering(catering);
+    setOfferForm({ unit_price: '', message: '' });
+    setShowOfferDialog(true);
+  };
+
   const handleRemovePartnership = async (partnershipId) => {
     if (!window.confirm('Bu ortaklığı sonlandırmak istediğinizden emin misiniz?')) {
       return;
