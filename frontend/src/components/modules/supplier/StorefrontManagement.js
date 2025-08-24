@@ -714,7 +714,7 @@ const StorefrontManagement = ({ companyId, userRole }) => {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold">Siparişler</h3>
-              <p className="text-gray-600">Gelen siparişleri yönetin</p>
+              <p className="text-gray-600">Teslim edilmemiş ve aktif siparişleri yönetin</p>
             </div>
             <Select value={orderFilter} onValueChange={setOrderFilter}>
               <SelectTrigger className="w-48">
@@ -722,8 +722,8 @@ const StorefrontManagement = ({ companyId, userRole }) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tüm Siparişler</SelectItem>
-                <SelectItem value="pending">Bekleyenler</SelectItem>
-                <SelectItem value="confirmed">Onaylananlar</SelectItem>
+                <SelectItem value="pending">Yeni Siparişler</SelectItem>
+                <SelectItem value="confirmed">Onayladıklarım</SelectItem>
                 <SelectItem value="preparing">Hazırlananlar</SelectItem>
                 <SelectItem value="delivered">Teslim Edilenler</SelectItem>
                 <SelectItem value="cancelled">İptal Edilenler</SelectItem>
@@ -733,41 +733,242 @@ const StorefrontManagement = ({ companyId, userRole }) => {
 
           {/* Order Detail Dialog */}
           <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   Sipariş Detayları - #{selectedOrder?.id?.slice(-8)}
                 </DialogTitle>
                 <DialogDescription>
-                  {selectedOrder?.catering_company_name} sipariş detayları
+                  {selectedOrder?.catering_company_name} firmasından gelen sipariş detayları
                 </DialogDescription>
               </DialogHeader>
               
               {selectedOrder && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Sipariş Bilgileri</h4>
-                      <div className="space-y-2 text-sm">
+                <div className="space-y-6">
+                  {/* Main Order Info Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Customer & Order Info */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Müşteri Bilgileri</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Müşteri:</span>
-                          <span>{selectedOrder.catering_company_name}</span>
+                          <span className="text-gray-600">Firma Adı:</span>
+                          <span className="font-semibold">{selectedOrder.catering_company_name}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Durum:</span>
-                          <Badge className={getStatusColor(selectedOrder.status)}>
-                            {getStatusLabel(selectedOrder.status)}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Toplam Tutar:</span>
-                          <span className="font-semibold">₺{selectedOrder.total_amount?.toFixed(2)}</span>
+                          <span className="text-gray-600">Telefon:</span>
+                          <span className="font-semibold text-blue-600">
+                            {selectedOrder.customer_phone || '+90 555 XXX XX XX'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Sipariş Tarihi:</span>
                           <span>{new Date(selectedOrder.created_at).toLocaleString('tr-TR')}</span>
                         </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Durum:</span>
+                          <Badge className={getStatusColor(selectedOrder.status)}>
+                            {getStatusLabel(selectedOrder.status)}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Financial & Delivery Info */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Teslimat ve Ödeme</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Toplam Tutar:</span>
+                          <span className="text-xl font-semibold text-green-600">
+                            ₺{selectedOrder.total_amount?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Teslimat Adresi:</span>
+                          <span className="text-right max-w-48">
+                            {selectedOrder.delivery_address || 'Firma adresi kullanılacak'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Talep Edilen Tarih:</span>
+                          <span>
+                            {selectedOrder.delivery_date 
+                              ? new Date(selectedOrder.delivery_date).toLocaleDateString('tr-TR')
+                              : 'En kısa sürede'
+                            }
+                          </span>
+                        </div>
+                        {selectedOrder.notes && (
+                          <div>
+                            <span className="text-gray-600">Not:</span>
+                            <p className="mt-1 p-2 bg-gray-50 rounded text-sm">{selectedOrder.notes}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Order Items Table */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Sipariş İçeriği</CardTitle>
+                      <CardDescription>
+                        {selectedOrder.items?.length || 0} farklı ürün sipariş edildi
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left p-3 font-medium text-gray-900">Ürün</th>
+                              <th className="text-center p-3 font-medium text-gray-900">Miktar</th>
+                              <th className="text-right p-3 font-medium text-gray-900">Birim Fiyat</th>
+                              <th className="text-right p-3 font-medium text-gray-900">Toplam</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedOrder.items?.map((item, index) => (
+                              <tr key={index} className="border-b border-gray-100">
+                                <td className="p-3">
+                                  <div>
+                                    <p className="font-medium">{item.product_name}</p>
+                                    <p className="text-sm text-gray-500">{item.product_unit_type} başına</p>
+                                  </div>
+                                </td>
+                                <td className="p-3 text-center font-medium">
+                                  {item.quantity} {item.product_unit_type}
+                                </td>
+                                <td className="p-3 text-right">₺{item.unit_price?.toFixed(2)}</td>
+                                <td className="p-3 text-right font-semibold">
+                                  ₺{item.total_price?.toFixed(2)}
+                                </td>
+                              </tr>
+                            )) || (
+                              <tr>
+                                <td colSpan="4" className="p-6 text-center text-gray-500">
+                                  Sipariş içeriği yüklenemedi
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Action Buttons - Two-Phase Delivery System */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Sipariş İşlemleri</CardTitle>
+                      <CardDescription>İki aşamalı teslimat onay sistemi</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {selectedOrder.status === 'pending' && (
+                        <div className="flex space-x-3">
+                          <Button 
+                            onClick={() => {
+                              handleUpdateOrderStatus(selectedOrder.id, 'confirmed');
+                              setShowOrderDialog(false);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Siparişi Onayla
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            onClick={() => {
+                              handleUpdateOrderStatus(selectedOrder.id, 'cancelled');
+                              setShowOrderDialog(false);
+                            }}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Siparişi İptal Et
+                          </Button>
+                        </div>
+                      )}
+
+                      {selectedOrder.status === 'confirmed' && (
+                        <div className="flex space-x-3">
+                          <Button 
+                            onClick={() => {
+                              handleUpdateOrderStatus(selectedOrder.id, 'preparing');
+                              setShowOrderDialog(false);
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            <Clock className="w-4 h-4 mr-2" />
+                            Hazırlanıyor Olarak İşaretle
+                          </Button>
+                        </div>
+                      )}
+
+                      {selectedOrder.status === 'preparing' && (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
+                            <h4 className="font-medium text-yellow-800 mb-2">
+                              📋 Teslimat Onay Süreci
+                            </h4>
+                            <p className="text-sm text-yellow-700 mb-3">
+                              Siparişi teslim ettiğinizde, Catering firmasının da onaylaması gerekecektir.
+                              Her iki taraf onayladığında sipariş tamamlanmış sayılacaktır.
+                            </p>
+                          </div>
+                          <Button 
+                            onClick={() => {
+                              handleUpdateOrderStatus(selectedOrder.id, 'delivered');
+                              setShowOrderDialog(false);
+                            }}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Truck className="w-4 h-4 mr-2" />
+                            Teslim Edildi (Catering Onayı Bekler)
+                          </Button>
+                        </div>
+                      )}
+
+                      {selectedOrder.status === 'delivered' && (
+                        <div className="p-4 bg-green-50 border border-green-200 rounded">
+                          <div className="flex items-center">
+                            <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                            <div>
+                              <p className="font-medium text-green-800">Teslimat Tamamlandı!</p>
+                              <p className="text-sm text-green-700">
+                                {selectedOrder.delivered_at 
+                                  ? `${new Date(selectedOrder.delivered_at).toLocaleString('tr-TR')} tarihinde teslim edildi`
+                                  : 'Catering firması teslimatı onayladı'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedOrder.status === 'cancelled' && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded">
+                          <div className="flex items-center">
+                            <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
+                            <div>
+                              <p className="font-medium text-red-800">Sipariş İptal Edildi</p>
+                              <p className="text-sm text-red-700">
+                                Bu sipariş iptal edilmiştir ve işlem yapılamaz.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
                     </div>
                     
                     <div>
