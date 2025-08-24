@@ -23,6 +23,7 @@ class SecYeAPITester:
         self.supplier_company_id = None
         self.created_shift_id = None
         self.created_user_id = None
+        self.admin_token = None
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None, headers=None):
         """Run a single API test"""
