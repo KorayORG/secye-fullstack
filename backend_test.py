@@ -1887,7 +1887,7 @@ class SecYeAPITester:
             # Now search for them to get their IDs
             self.test_company_search("corporate", "Test Kurumsal")
             self.test_company_search("catering", "Test Catering")
-            self.test_company_search("supplier", "Test Tedarikçi")
+            self.test_company_search("supplier", "Tedarikçi")
             return True
         else:
             print("❌ Failed to create test companies")
