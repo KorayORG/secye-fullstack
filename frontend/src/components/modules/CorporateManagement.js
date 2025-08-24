@@ -161,9 +161,15 @@ const CorporateManagement = ({ companyId, userRole }) => {
     return Math.floor(employeeCount * 0.8); // Assume 80% participation rate
   };
 
-  const filteredCorporates = corporateCompanies.filter(company =>
-    company.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtered data based on active tab and search
+  const getFilteredCompanies = () => {
+    const companies = activeTab === 'all' ? allCorporateCompanies : corporateCompanies;
+    return companies.filter(company =>
+      company.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const filteredCompanies = getFilteredCompanies();
 
   const canManageCorporates = () => {
     return userRole && (userRole.includes('Owner') || userRole.includes('4') || userRole.includes('3'));
