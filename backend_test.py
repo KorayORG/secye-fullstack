@@ -1457,6 +1457,24 @@ def main():
         if not companies_created:
             print("❌ Failed to create test companies - cannot proceed with offer tests")
             return 1
+        
+        # Test 4: Admin login and approve applications
+        print("\n📋 Test 4: Admin Login and Application Approval")
+        admin_login_success = tester.admin_login()
+        if admin_login_success:
+            approval_success = tester.approve_applications()
+            if not approval_success:
+                print("❌ Failed to approve applications")
+                return 1
+        else:
+            print("❌ Admin login failed - cannot approve applications")
+            return 1
+        
+        # Test 5: Search for approved companies
+        print("\n📋 Test 5: Search for Approved Companies")
+        tester.test_company_search("corporate", "Test Kurumsal")
+        tester.test_company_search("catering", "Test Catering")
+        
     else:
         print(f"\n🏢 Found existing companies:")
         print(f"   Corporate: {tester.corporate_company_id}")
@@ -1468,12 +1486,12 @@ def main():
         print(f"   Corporate: {tester.corporate_company_id}")
         print(f"   Catering: {tester.catering_company_id}")
         
-        # Test 4: FOCUSED Offer System Test
-        print("\n📋 Test 4: FOCUSED OFFER SYSTEM TEST")
+        # Test 6: FOCUSED Offer System Test
+        print("\n📋 Test 6: FOCUSED OFFER SYSTEM TEST")
         offer_system_success = tester.test_offer_system_apis()
         
-        # Test 5: Partnership APIs (for context)
-        print("\n📋 Test 5: Partnership APIs (for context)")
+        # Test 7: Partnership APIs (for context)
+        print("\n📋 Test 7: Partnership APIs (for context)")
         partnership_success = tester.test_partnership_apis()
         
     else:
