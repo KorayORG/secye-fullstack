@@ -313,13 +313,13 @@ const CorporateManagement = ({ companyId, userRole }) => {
       )}
 
       {/* Search */}
-      {corporateCompanies.length > 0 && (
+      {(allCorporateCompanies.length > 0 || corporateCompanies.length > 0) && (
         <Card>
           <CardContent className="p-4">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
               <Input
-                placeholder="Firma ara..."
+                placeholder={`${activeTab === 'all' ? 'Tüm' : 'Anlaşmalı'} firmalar içinde ara...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
