@@ -92,9 +92,6 @@ const SupplierManagement = ({ companyId, userRole }) => {
     }
   };
 
-    }
-  };
-
   const handleOpenTerminationDialog = (supplier) => {
     setSelectedSupplier(supplier);
     setTerminationForm({ reason: '', message: '' });
