@@ -332,12 +332,12 @@ const CateringManagement = ({ companyId, userRole }) => {
 
             {/* Search Dialog */}
             <Dialog open={showSearchDialog} onOpenChange={setShowSearchDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Catering Ara
-              </Button>
-            </DialogTrigger>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Catering Ara
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Catering Firması Ara</DialogTitle>
