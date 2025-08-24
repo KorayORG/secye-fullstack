@@ -68,6 +68,29 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
     }
   };
 
+    }
+  };
+
+  const loadTerminationRequests = async () => {
+    try {
+      const endpoint = companyType === 'catering' 
+        ? `${API}/catering/${companyId}/termination-requests`
+        : `${API}/corporate/${companyId}/termination-requests`;
+      
+      const response = await axios.get(endpoint, {
+        params: {
+          request_type: 'received',
+          limit: 10
+        }
+      });
+      
+      setTerminationRequests(response.data.termination_requests || []);
+    } catch (err) {
+      console.error('Termination requests loading error:', err);
+      // Don't show error for termination requests as it's secondary feature
+    }
+  };
+
   const handleOfferResponse = async (offerId, action) => {
     if (!window.confirm(`Bu teklifi ${action === 'accept' ? 'kabul' : 'red'} etmek istediğinizden emin misiniz?`)) {
       return;
