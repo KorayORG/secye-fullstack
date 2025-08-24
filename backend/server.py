@@ -4169,6 +4169,438 @@ async def get_company_details(
             detail="Şirket detayları alınamadı"
         )
 
+
+# ===== CONTRACT MANAGEMENT APIs =====
+@api_router.get("/partnerships/{partnership_id}/contract")
+async def get_contract_by_partnership(partnership_id: str):
+    """Get contract details for a partnership"""
+    try:
+        # Get the contract
+        contract = await db.contracts.find_one({"partnership_id": partnership_id})
+        if not contract:
+            raise HTTPException(status_code=404, detail="Anlaşma bulunamadı")
+        
+        # Get partnership details
+        partnership = await db.partnerships.find_one({"id": partnership_id})
+        if not partnership:
+            raise HTTPException(status_code=404, detail="Ortaklık bulunamadı")
+        
+        # Get company details
+        corporate_company = await db.companies.find_one({"id": contract["corporate_id"]})
+        catering_company = await db.companies.find_one({"id": contract["catering_id"]})
+        
+        return {
+            "contract": {
+                "id": contract["id"],
+                "partnership_id": contract["partnership_id"],
+                "corporate_id": contract["corporate_id"],
+                "catering_id": contract["catering_id"],
+                "unit_price": contract["unit_price"],
+                "start_date": contract["start_date"].isoformat(),
+                "end_date": contract["end_date"].isoformat(),
+                "duration_months": contract["duration_months"],
+                "status": contract["status"],
+                "created_at": contract["created_at"].isoformat(),
+                "updated_at": contract["updated_at"].isoformat(),
+                "corporate_company": {
+                    "id": corporate_company["id"],
+                    "name": corporate_company["name"]
+                } if corporate_company else None,
+                "catering_company": {
+                    "id": catering_company["id"],
+                    "name": catering_company["name"]
+                } if catering_company else None
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get contract error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Anlaşma bilgileri alınamadı"
+        )
+
+@api_router.get("/{company_type}/{company_id}/contracts")
+async def get_company_contracts(
+    company_type: str,
+    company_id: str,
+    status_filter: str = "active",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get contracts for a company (corporate or catering)"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": company_type, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query based on company type
+        filter_query = {"status": status_filter} if status_filter != "all" else {}
+        
+        if company_type == "corporate":
+            filter_query["corporate_id"] = company_id
+        elif company_type == "catering":
+            filter_query["catering_id"] = company_id
+        else:
+            raise HTTPException(status_code=400, detail="Geçersiz şirket tipi")
+        
+        # Get contracts
+        contracts = await db.contracts.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(contracts) > limit
+        if has_more:
+            contracts = contracts[:-1]
+        
+        # Get company details for each contract
+        result_contracts = []
+        for contract in contracts:
+            # Get the other company details
+            other_company_id = contract["catering_id"] if company_type == "corporate" else contract["corporate_id"]
+            other_company = await db.companies.find_one({"id": other_company_id})
+            
+            result_contracts.append({
+                "id": contract["id"],
+                "partnership_id": contract["partnership_id"],
+                "corporate_id": contract["corporate_id"],
+                "catering_id": contract["catering_id"],
+                "unit_price": contract["unit_price"],
+                "start_date": contract["start_date"].isoformat(),
+                "end_date": contract["end_date"].isoformat(),
+                "duration_months": contract["duration_months"],
+                "status": contract["status"],
+                "created_at": contract["created_at"].isoformat(),
+                "updated_at": contract["updated_at"].isoformat(),
+                "other_company": {
+                    "id": other_company["id"],
+                    "name": other_company["name"],
+                    "type": other_company["type"]
+                } if other_company else None,
+                "days_remaining": (contract["end_date"] - datetime.now(timezone.utc)).days if contract["status"] == "active" else 0
+            })
+        
+        return {
+            "contracts": result_contracts,
+            "total": len(result_contracts),
+            "has_more": has_more,
+            "status_filter": status_filter
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get company contracts error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Anlaşmalar alınamadı"
+        )
+
+
+# ===== TERMINATION REQUEST APIs =====
+@api_router.post("/{company_type}/{company_id}/termination-requests")
+async def create_termination_request(
+    company_type: str,
+    company_id: str,
+    request: dict
+):
+    """Create a termination request"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": company_type, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Extract termination request data
+        partnership_id = request.get("partnership_id")
+        reason = request.get("reason", "").strip()
+        message = request.get("message", "").strip()
+        termination_date = request.get("termination_date")
+        
+        if not partnership_id:
+            raise HTTPException(status_code=400, detail="Ortaklık ID'si gerekli")
+        if not reason:
+            raise HTTPException(status_code=400, detail="Fesih nedeni zorunludur")
+        if not message:
+            raise HTTPException(status_code=400, detail="Fesih mesajı zorunludur")
+        
+        # Get partnership and contract
+        partnership = await db.partnerships.find_one({"id": partnership_id, "is_active": True})
+        if not partnership:
+            raise HTTPException(status_code=404, detail="Ortaklık bulunamadı")
+        
+        contract = await db.contracts.find_one({"partnership_id": partnership_id, "status": "active"})
+        if not contract:
+            raise HTTPException(status_code=404, detail="Aktif anlaşma bulunamadı")
+        
+        # Verify requesting company is part of this partnership
+        if company_type == "corporate" and partnership["corporate_id"] != company_id:
+            raise HTTPException(status_code=403, detail="Bu ortaklık üzerinde yetkınız yok")
+        elif company_type == "catering" and partnership["catering_id"] != company_id:
+            raise HTTPException(status_code=403, detail="Bu ortaklık üzerinde yetkıniz yok")
+        
+        # Determine target company
+        if company_type == "corporate":
+            target_company_id = partnership["catering_id"]
+        else:
+            target_company_id = partnership["corporate_id"]
+        
+        # Check if there's already a pending termination request
+        existing_request = await db.termination_requests.find_one({
+            "partnership_id": partnership_id,
+            "status": "pending"
+        })
+        
+        if existing_request:
+            raise HTTPException(status_code=400, detail="Bu ortaklık için zaten bekleyen bir fesih talebi var")
+        
+        # Parse termination date
+        requested_termination_date = None
+        if termination_date:
+            try:
+                requested_termination_date = datetime.fromisoformat(termination_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Geçersiz fesih tarihi formatı")
+        
+        # Create termination request
+        termination_request = {
+            "id": str(uuid.uuid4()),
+            "contract_id": contract["id"],
+            "partnership_id": partnership_id,
+            "requesting_company_id": company_id,
+            "target_company_id": target_company_id,
+            "reason": reason,
+            "message": message,
+            "status": "pending",
+            "requested_termination_date": requested_termination_date,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.termination_requests.insert_one(termination_request)
+        
+        # Update contract status
+        await db.contracts.update_one(
+            {"id": contract["id"]},
+            {
+                "$set": {
+                    "status": "pending_termination",
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "TERMINATION_REQUEST_CREATED",
+            "company_id": company_id,
+            "meta": {
+                "termination_request_id": termination_request["id"],
+                "partnership_id": partnership_id,
+                "target_company_id": target_company_id,
+                "reason": reason
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Fesih talebi gönderildi", "termination_request_id": termination_request["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create termination request error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fesih talebi oluşturulamadı"
+        )
+
+@api_router.get("/{company_type}/{company_id}/termination-requests")
+async def get_termination_requests(
+    company_type: str,
+    company_id: str,
+    request_type: str = "received",  # "sent" or "received"
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get termination requests for a company"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": company_type, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Build filter query
+        if request_type == "sent":
+            filter_query = {"requesting_company_id": company_id}
+        else:  # received
+            filter_query = {"target_company_id": company_id}
+        
+        # Get termination requests
+        termination_requests = await db.termination_requests.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(termination_requests) > limit
+        if has_more:
+            termination_requests = termination_requests[:-1]
+        
+        # Get company and partnership details for each request
+        result_requests = []
+        for request_item in termination_requests:
+            # Get the other company details
+            other_company_id = request_item["target_company_id"] if request_type == "sent" else request_item["requesting_company_id"]
+            other_company = await db.companies.find_one({"id": other_company_id})
+            
+            # Get partnership details
+            partnership = await db.partnerships.find_one({"id": request_item["partnership_id"]})
+            
+            result_requests.append({
+                "id": request_item["id"],
+                "contract_id": request_item["contract_id"],
+                "partnership_id": request_item["partnership_id"],
+                "requesting_company_id": request_item["requesting_company_id"],
+                "target_company_id": request_item["target_company_id"],
+                "reason": request_item["reason"],
+                "message": request_item["message"],
+                "status": request_item["status"],
+                "requested_termination_date": request_item.get("requested_termination_date").isoformat() if request_item.get("requested_termination_date") else None,
+                "created_at": request_item["created_at"].isoformat(),
+                "updated_at": request_item["updated_at"].isoformat(),
+                "approved_at": request_item.get("approved_at").isoformat() if request_item.get("approved_at") else None,
+                "other_company": {
+                    "id": other_company["id"],
+                    "name": other_company["name"],
+                    "type": other_company["type"]
+                } if other_company else None,
+                "partnership": {
+                    "id": partnership["id"],
+                    "partnership_type": partnership["partnership_type"]
+                } if partnership else None
+            })
+        
+        return {
+            "termination_requests": result_requests,
+            "total": len(result_requests),
+            "has_more": has_more,
+            "request_type": request_type
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get termination requests error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fesih talepleri alınamadı"
+        )
+
+@api_router.put("/{company_type}/{company_id}/termination-requests/{request_id}")
+async def respond_to_termination_request(
+    company_type: str,
+    company_id: str,
+    request_id: str,
+    request: dict
+):
+    """Approve or reject a termination request"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": company_type, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Get the termination request
+        termination_request = await db.termination_requests.find_one({"id": request_id, "target_company_id": company_id})
+        if not termination_request:
+            raise HTTPException(status_code=404, detail="Fesih talebi bulunamadı")
+        
+        if termination_request["status"] != "pending":
+            raise HTTPException(status_code=400, detail="Bu fesih talebi zaten yanıtlanmış")
+        
+        # Extract response data
+        action = request.get("action")  # "approve" or "reject"
+        
+        if action not in ["approve", "reject"]:
+            raise HTTPException(status_code=400, detail="Geçersiz aksiyon")
+        
+        # Update termination request status
+        new_status = "approved" if action == "approve" else "rejected"
+        update_data = {
+            "status": new_status,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        if action == "approve":
+            update_data["approved_at"] = datetime.now(timezone.utc)
+            update_data["approved_by"] = company_id
+        
+        await db.termination_requests.update_one(
+            {"id": request_id},
+            {"$set": update_data}
+        )
+        
+        # If approved, terminate the contract and partnership
+        if action == "approve":
+            # Update contract status
+            await db.contracts.update_one(
+                {"id": termination_request["contract_id"]},
+                {
+                    "$set": {
+                        "status": "terminated",
+                        "updated_at": datetime.now(timezone.utc)
+                    }
+                }
+            )
+            
+            # Deactivate partnership
+            await db.partnerships.update_one(
+                {"id": termination_request["partnership_id"]},
+                {
+                    "$set": {
+                        "is_active": False,
+                        "updated_at": datetime.now(timezone.utc)
+                    }
+                }
+            )
+        else:
+            # If rejected, revert contract status to active
+            await db.contracts.update_one(
+                {"id": termination_request["contract_id"]},
+                {
+                    "$set": {
+                        "status": "active",
+                        "updated_at": datetime.now(timezone.utc)
+                    }
+                }
+            )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": f"TERMINATION_REQUEST_{action.upper()}ED",
+            "company_id": company_id,
+            "meta": {
+                "termination_request_id": request_id,
+                "partnership_id": termination_request["partnership_id"],
+                "requesting_company_id": termination_request["requesting_company_id"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        message = "Fesih talebi onaylandı" if action == "approve" else "Fesih talebi reddedildi"
+        return {"success": True, "message": message}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Respond to termination request error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fesih talebi yanıtlanamadı"
+        )
+
+
 # Include router
 app.include_router(api_router)
 
