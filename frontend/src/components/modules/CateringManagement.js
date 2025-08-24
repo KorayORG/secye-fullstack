@@ -49,7 +49,8 @@ const CateringManagement = ({ companyId, userRole }) => {
   const [selectedCatering, setSelectedCatering] = useState(null);
   const [offerForm, setOfferForm] = useState({
     unit_price: '',
-    message: ''
+    message: '',
+    duration_months: 12
   });
   const [offerLoading, setOfferLoading] = useState(false);
 
