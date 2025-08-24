@@ -1349,7 +1349,7 @@ class SecYeAPITester:
             return False
 
 def main():
-    print("🚀 Starting Seç Ye API Tests - BULK IMPORT FOCUS")
+    print("🚀 Starting Seç Ye API Tests - OFFER SYSTEM FOCUS")
     print("=" * 60)
     
     # Setup
@@ -1359,42 +1359,57 @@ def main():
     print("\n📋 Test 1: API Health Check")
     tester.test_health_check()
 
-    # Test 2: Company Search (to get corporate company ID)
+    # Test 2: Company Search (to get existing companies)
     print("\n📋 Test 2: Company Search")
     tester.test_company_search("corporate", "")  # Get any corporate company
+    tester.test_company_search("catering", "")   # Get any catering company
 
-    # ===== FOCUSED BULK IMPORT TEST =====
-    if tester.corporate_company_id:
-        print(f"\n🏢 Using Corporate Company ID: {tester.corporate_company_id}")
+    # Test 3: Create test companies if none exist
+    if not tester.corporate_company_id or not tester.catering_company_id:
+        print("\n📋 Test 3: Creating Test Companies")
+        companies_created = tester.create_test_companies()
+        if not companies_created:
+            print("❌ Failed to create test companies - cannot proceed with offer tests")
+            return 1
+    else:
+        print(f"\n🏢 Found existing companies:")
+        print(f"   Corporate: {tester.corporate_company_id}")
+        print(f"   Catering: {tester.catering_company_id}")
+
+    # ===== FOCUSED OFFER SYSTEM TEST =====
+    if tester.corporate_company_id and tester.catering_company_id:
+        print(f"\n🏢 Using Companies:")
+        print(f"   Corporate: {tester.corporate_company_id}")
+        print(f"   Catering: {tester.catering_company_id}")
         
-        # Test 3: FOCUSED Bulk Import Test
-        print("\n📋 Test 3: FOCUSED BULK IMPORT TEST")
-        bulk_import_success = tester.test_bulk_import_focused()
+        # Test 4: FOCUSED Offer System Test
+        print("\n📋 Test 4: FOCUSED OFFER SYSTEM TEST")
+        offer_system_success = tester.test_offer_system_apis()
         
-        # Also run the regular employee management tests for context
-        print("\n📋 Test 4: Regular Employee Management APIs (for context)")
-        employee_success = tester.test_employee_management_apis()
+        # Test 5: Partnership APIs (for context)
+        print("\n📋 Test 5: Partnership APIs (for context)")
+        partnership_success = tester.test_partnership_apis()
         
     else:
-        print("⚠️  No corporate company found - cannot test bulk import")
-        bulk_import_success = False
-        employee_success = False
+        print("⚠️  Missing required companies - cannot test offer system")
+        offer_system_success = False
+        partnership_success = False
 
     # Print results
     print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
-    # Summary of bulk import test
-    if tester.corporate_company_id:
-        print("\n🎯 BULK IMPORT TEST SUMMARY:")
-        print(f"   🔥 Bulk Import Fix: {'✅ VERIFIED FIXED' if bulk_import_success else '❌ STILL BROKEN'}")
-        print(f"   📋 Employee APIs: {'✅ WORKING' if employee_success else '❌ ISSUES'}")
+    # Summary of offer system test
+    if tester.corporate_company_id and tester.catering_company_id:
+        print("\n🎯 OFFER SYSTEM TEST SUMMARY:")
+        print(f"   🎯 Offer System: {'✅ WORKING' if offer_system_success else '❌ ISSUES'}")
+        print(f"   🤝 Partnership APIs: {'✅ WORKING' if partnership_success else '❌ ISSUES'}")
     
-    if bulk_import_success:
-        print("🎉 BULK IMPORT 500 ERROR IS FIXED!")
+    if offer_system_success:
+        print("🎉 OFFER SYSTEM APIs ARE WORKING CORRECTLY!")
         return 0
     else:
-        print("⚠️  BULK IMPORT 500 ERROR IS STILL PRESENT!")
+        print("⚠️  OFFER SYSTEM HAS ISSUES!")
         return 1
 
 if __name__ == "__main__":
