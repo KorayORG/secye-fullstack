@@ -25,9 +25,8 @@ import {
 import EmployeeManagement from './modules/EmployeeManagement';
 import SystemSettings from './modules/SystemSettings';
 import MailSystem from './modules/MailSystem';
-// TODO: Create supplier-specific modules
-// import CateringManagement from './modules/CateringManagement';
-// import StoreManagement from './modules/StoreManagement';
+
+import StorefrontManagement from './modules/store/StorefrontManagement';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -338,132 +337,10 @@ const SupplierPanel = () => {
             </div>
           </TabsContent>
 
+
           {/* Store Management Tab */}
           <TabsContent value="store">
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Mağazam</h2>
-                <p className="text-gray-600">Ürün katalogunuzu ve satış performansınızı yönetin</p>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Quick Stats */}
-                <Card className="lg:col-span-3">
-                  <CardHeader>
-                    <CardTitle>Satış Özeti</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">₺125.500</div>
-                        <div className="text-sm text-blue-800">Bu Ay Toplam</div>
-                      </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">147</div>
-                        <div className="text-sm text-green-800">Toplam Sipariş</div>
-                      </div>
-                      <div className="bg-orange-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">12</div>
-                        <div className="text-sm text-orange-800">Aktif Müşteri</div>
-                      </div>
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">85%</div>
-                        <div className="text-sm text-purple-800">Stok Durumu</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Product Categories */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Ürün Kategorileri</CardTitle>
-                    <CardDescription>En çok satan kategorileriniz</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Sebze & Meyve</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-500 h-2 rounded-full" style={{width: '85%'}}></div>
-                          </div>
-                          <span className="text-sm font-medium">85%</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Et & Protein</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div className="bg-red-500 h-2 rounded-full" style={{width: '72%'}}></div>
-                          </div>
-                          <span className="text-sm font-medium">72%</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Süt Ürünleri</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-500 h-2 rounded-full" style={{width: '68%'}}></div>
-                          </div>
-                          <span className="text-sm font-medium">68%</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Bakliyat & Tahıl</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div className="bg-orange-500 h-2 rounded-full" style={{width: '55%'}}></div>
-                          </div>
-                          <span className="text-sm font-medium">55%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Recent Orders */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Son Siparişler</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2">
-                        <div>
-                          <div className="font-medium">Lezzet Catering</div>
-                          <div className="text-sm text-gray-500">Sebze Mix - 25kg</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">₺1.250</div>
-                          <Badge className="bg-green-100 text-green-800">Teslim Edildi</Badge>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <div>
-                          <div className="font-medium">Şef Mutfak</div>
-                          <div className="text-sm text-gray-500">Organik Et - 10kg</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">₺2.800</div>
-                          <Badge className="bg-blue-100 text-blue-800">Hazırlanıyor</Badge>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <div>
-                          <div className="font-medium">Elit Catering</div>
-                          <div className="text-sm text-gray-500">Premium Balık - 5kg</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">₺1.850</div>
-                          <Badge className="bg-orange-100 text-orange-800">Beklemede</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            <StorefrontManagement companyId={getCompanyIdFromPath()} />
           </TabsContent>
 
           {/* Mail System Tab */}
