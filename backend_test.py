@@ -3,11 +3,18 @@ import sys
 from datetime import datetime
 import json
 import uuid
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('frontend/.env')
 
 class SecYeAPITester:
-    def __init__(self, base_url="https://food-alliance.preview.emergentagent.com"):
-        self.base_url = base_url
-        self.api_url = f"{base_url}/api"
+    def __init__(self):
+        # Use the same backend URL as the frontend
+        backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8000')
+        self.base_url = backend_url
+        self.api_url = f"{backend_url}/api"
         self.tests_run = 0
         self.tests_passed = 0
         self.company_id = None
