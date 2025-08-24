@@ -40,6 +40,7 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
 
   useEffect(() => {
     loadOffers();
+    loadTerminationRequests();
   }, [companyId, activeTab]);
 
   const loadOffers = async () => {
