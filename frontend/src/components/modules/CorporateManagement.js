@@ -30,9 +30,11 @@ const CorporateManagement = ({ companyId, userRole }) => {
   const [loading, setLoading] = useState(true);
   const [partnerships, setPartnerships] = useState([]);
   const [corporateCompanies, setCorporateCompanies] = useState([]);
+  const [allCorporateCompanies, setAllCorporateCompanies] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'agreements'
   
   // Termination states
   const [showTerminationDialog, setShowTerminationDialog] = useState(false);
@@ -44,14 +46,24 @@ const CorporateManagement = ({ companyId, userRole }) => {
   const [terminationLoading, setTerminationLoading] = useState(false);
 
   useEffect(() => {
-    loadPartnerships();
+    loadData();
   }, [companyId]);
 
-  const loadPartnerships = async () => {
+  const loadData = async () => {
     setLoading(true);
     setError('');
     
     try {
+      // Load all corporate companies
+      const allCorporatesResponse = await axios.get(`${API}/companies`, {
+        params: {
+          type: 'corporate',
+          limit: 100
+        }
+      });
+      
+      setAllCorporateCompanies(allCorporatesResponse.data.companies || []);
+      
       // Get partnerships where this catering company is the partner
       const partnershipsResponse = await axios.get(`${API}/partnerships`, {
         params: {
@@ -63,7 +75,7 @@ const CorporateManagement = ({ companyId, userRole }) => {
       const partnershipData = partnershipsResponse.data.partnerships || [];
       setPartnerships(partnershipData);
       
-      // Get details for each corporate company
+      // Get details for each corporate company that we have partnerships with
       const corporateDetails = [];
       for (const partnership of partnershipData) {
         if (partnership.corporate_id && partnership.is_active) {
@@ -85,8 +97,8 @@ const CorporateManagement = ({ companyId, userRole }) => {
       setCorporateCompanies(corporateDetails);
       
     } catch (err) {
-      console.error('Partnerships loading error:', err);
-      setError('Anlaşmalı firmalar yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+      console.error('Data loading error:', err);
+      setError('Veriler yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
