@@ -26,6 +26,7 @@ const API = `${BACKEND_URL}/api`;
 const OfferManagement = ({ companyId, userRole, companyType }) => {
   const [loading, setLoading] = useState(true);
   const [offers, setOffers] = useState([]);
+  const [terminationRequests, setTerminationRequests] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('received');
