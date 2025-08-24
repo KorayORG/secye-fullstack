@@ -68,9 +68,6 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
     }
   };
 
-    }
-  };
-
   const loadTerminationRequests = async () => {
     try {
       const endpoint = companyType === 'catering' 
