@@ -98,6 +98,53 @@ const CorporateManagement = ({ companyId, userRole }) => {
     return company.employee_count || Math.floor(Math.random() * 200) + 50;
   };
 
+    }
+  };
+
+  const handleOpenTerminationDialog = (company) => {
+    setSelectedCorporate(company);
+    setTerminationForm({ reason: '', message: '' });
+    setShowTerminationDialog(true);
+  };
+
+  const handleSendTerminationRequest = async () => {
+    if (!selectedCorporate || !selectedCorporate.partnership_id) return;
+
+    if (!terminationForm.reason.trim()) {
+      setError('Lütfen fesih nedenini belirtin');
+      return;
+    }
+
+    if (!terminationForm.message.trim()) {
+      setError('Lütfen fesih mesajını yazın');
+      return;
+    }
+
+    setTerminationLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await axios.post(`${API}/catering/${companyId}/termination-requests`, {
+        partnership_id: selectedCorporate.partnership_id,
+        reason: terminationForm.reason,
+        message: terminationForm.message
+      });
+      
+      setSuccess(`${selectedCorporate.name} ile anlaşma fesih talebi gönderildi`);
+      setShowTerminationDialog(false);
+      setTerminationForm({ reason: '', message: '' });
+      setSelectedCorporate(null);
+      loadPartnerships(); // Reload to reflect changes
+      
+    } catch (err) {
+      console.error('Termination request error:', err);
+      setError('Fesih talebi gönderilirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setTerminationLoading(false);
+    }
+  };
+
   const getDailyMealAverage = (company) => {
     // This would be calculated from actual meal orders
     // For now, we'll estimate based on employee count
