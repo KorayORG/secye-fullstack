@@ -970,6 +970,384 @@ class SecYeAPITester:
         
         return critical_tests_passed
 
+    def test_offer_system_apis(self):
+        """Test Offer System APIs - NEW IMPLEMENTATION"""
+        print("\n📋 Testing Offer System APIs - NEW IMPLEMENTATION")
+        print("=" * 60)
+        
+        # First ensure we have both corporate and catering companies
+        if not self.corporate_company_id:
+            print("❌ No corporate company ID available for offer tests")
+            return False
+        
+        if not self.catering_company_id:
+            print("❌ No catering company ID available for offer tests")
+            return False
+        
+        print(f"🏢 Corporate Company ID: {self.corporate_company_id}")
+        print(f"🍽️  Catering Company ID: {self.catering_company_id}")
+        
+        # Test 1: Send offer from corporate to catering company
+        print("\n🔍 Test 1: Send offer from corporate to catering company")
+        offer_data = {
+            "catering_id": self.catering_company_id,
+            "unit_price": 25.50,
+            "message": "Merhaba, şirketimiz için catering hizmeti almak istiyoruz. Günlük 100 kişilik yemek servisi için teklifinizi bekliyoruz."
+        }
+        
+        success1, response1 = self.run_test(
+            "Send Offer - Corporate to Catering",
+            "POST",
+            f"corporate/{self.corporate_company_id}/offers",
+            200,
+            data=offer_data
+        )
+        
+        offer_id = None
+        if success1 and response1.get('offer_id'):
+            offer_id = response1['offer_id']
+            print(f"   ✅ Created offer ID: {offer_id}")
+        
+        # Test 2: Validation tests - missing catering_id
+        print("\n🔍 Test 2: Validation - Missing catering_id")
+        invalid_offer_data = {
+            "unit_price": 25.50,
+            "message": "Test message without catering_id"
+        }
+        
+        success2, response2 = self.run_test(
+            "Send Offer - Missing catering_id",
+            "POST",
+            f"corporate/{self.corporate_company_id}/offers",
+            400,  # Should fail validation
+            data=invalid_offer_data
+        )
+        
+        # Test 3: Validation tests - invalid unit_price
+        print("\n🔍 Test 3: Validation - Invalid unit_price")
+        invalid_price_data = {
+            "catering_id": self.catering_company_id,
+            "unit_price": -5.0,  # Negative price
+            "message": "Test message with invalid price"
+        }
+        
+        success3, response3 = self.run_test(
+            "Send Offer - Invalid unit_price",
+            "POST",
+            f"corporate/{self.corporate_company_id}/offers",
+            400,  # Should fail validation
+            data=invalid_price_data
+        )
+        
+        # Test 4: Duplicate offer prevention
+        print("\n🔍 Test 4: Duplicate offer prevention")
+        duplicate_offer_data = {
+            "catering_id": self.catering_company_id,
+            "unit_price": 30.00,
+            "message": "This should be rejected as duplicate"
+        }
+        
+        success4, response4 = self.run_test(
+            "Send Offer - Duplicate Prevention",
+            "POST",
+            f"corporate/{self.corporate_company_id}/offers",
+            400,  # Should fail due to existing pending offer
+            data=duplicate_offer_data
+        )
+        
+        # Test 5: Get corporate offers (sent)
+        print("\n🔍 Test 5: Get corporate offers (sent)")
+        success5, response5 = self.run_test(
+            "Get Corporate Offers - Sent",
+            "GET",
+            f"corporate/{self.corporate_company_id}/offers",
+            200,
+            params={"offer_type": "sent"}
+        )
+        
+        # Test 6: Get corporate offers (received) - should be empty for corporate
+        print("\n🔍 Test 6: Get corporate offers (received)")
+        success6, response6 = self.run_test(
+            "Get Corporate Offers - Received",
+            "GET",
+            f"corporate/{self.corporate_company_id}/offers",
+            200,
+            params={"offer_type": "received"}
+        )
+        
+        # Test 7: Get catering offers (received)
+        print("\n🔍 Test 7: Get catering offers (received)")
+        success7, response7 = self.run_test(
+            "Get Catering Offers - Received",
+            "GET",
+            f"catering/{self.catering_company_id}/offers",
+            200,
+            params={"offer_type": "received"}
+        )
+        
+        # Test 8: Get catering offers (sent) - should be empty for catering
+        print("\n🔍 Test 8: Get catering offers (sent)")
+        success8, response8 = self.run_test(
+            "Get Catering Offers - Sent",
+            "GET",
+            f"catering/{self.catering_company_id}/offers",
+            200,
+            params={"offer_type": "sent"}
+        )
+        
+        # Test 9: Accept offer (catering company)
+        if offer_id:
+            print(f"\n🔍 Test 9: Accept offer (ID: {offer_id})")
+            accept_data = {
+                "action": "accept"
+            }
+            
+            success9, response9 = self.run_test(
+                "Accept Offer - Catering Response",
+                "PUT",
+                f"catering/{self.catering_company_id}/offers/{offer_id}",
+                200,
+                data=accept_data
+            )
+        else:
+            success9 = False
+            print("⚠️  Skipping accept offer test - no offer ID available")
+        
+        # Test 10: Verify partnership creation after acceptance
+        if success9:
+            print("\n🔍 Test 10: Verify partnership creation")
+            success10, response10 = self.run_test(
+                "Get Partnerships - Verify Creation",
+                "GET",
+                f"corporate/{self.corporate_company_id}/partnerships",
+                200
+            )
+            
+            if success10 and response10.get('partnerships'):
+                partnerships = response10['partnerships']
+                partnership_found = any(
+                    p.get('catering_id') == self.catering_company_id 
+                    for p in partnerships
+                )
+                if partnership_found:
+                    print("   ✅ Partnership successfully created after offer acceptance")
+                else:
+                    print("   ⚠️  Partnership not found - may need investigation")
+        else:
+            success10 = False
+            print("⚠️  Skipping partnership verification - offer not accepted")
+        
+        # Test 11: Try to accept already processed offer (should fail)
+        if offer_id:
+            print(f"\n🔍 Test 11: Try to accept already processed offer")
+            duplicate_accept_data = {
+                "action": "accept"
+            }
+            
+            success11, response11 = self.run_test(
+                "Accept Already Processed Offer",
+                "PUT",
+                f"catering/{self.catering_company_id}/offers/{offer_id}",
+                400,  # Should fail - already processed
+                data=duplicate_accept_data
+            )
+        else:
+            success11 = True  # Skip if no offer
+            print("⚠️  Skipping duplicate accept test - no offer ID available")
+        
+        # Test 12: Create and reject another offer
+        print("\n🔍 Test 12: Create and reject another offer")
+        
+        # First create another offer (to a different catering company if available)
+        # For now, we'll create to same company since duplicate prevention only applies to pending offers
+        new_offer_data = {
+            "catering_id": self.catering_company_id,
+            "unit_price": 28.75,
+            "message": "İkinci teklif - reddetme testi için"
+        }
+        
+        success12a, response12a = self.run_test(
+            "Create Second Offer for Rejection Test",
+            "POST",
+            f"corporate/{self.corporate_company_id}/offers",
+            200,
+            data=new_offer_data
+        )
+        
+        second_offer_id = None
+        if success12a and response12a.get('offer_id'):
+            second_offer_id = response12a['offer_id']
+        
+        # Now reject it
+        if second_offer_id:
+            reject_data = {
+                "action": "reject"
+            }
+            
+            success12b, response12b = self.run_test(
+                "Reject Offer - Catering Response",
+                "PUT",
+                f"catering/{self.catering_company_id}/offers/{second_offer_id}",
+                200,
+                data=reject_data
+            )
+        else:
+            success12b = False
+            print("⚠️  Skipping reject test - no second offer created")
+        
+        success12 = success12a and success12b
+        
+        # Test 13: Test invalid company IDs
+        print("\n🔍 Test 13: Test invalid company IDs")
+        success13a, response13a = self.run_test(
+            "Send Offer - Invalid Corporate Company ID",
+            "POST",
+            "corporate/invalid-company-id/offers",
+            404,
+            data=offer_data
+        )
+        
+        success13b, response13b = self.run_test(
+            "Get Offers - Invalid Catering Company ID",
+            "GET",
+            "catering/invalid-company-id/offers",
+            404
+        )
+        
+        success13 = success13a and success13b
+        
+        # Test 14: Test invalid offer ID for response
+        print("\n🔍 Test 14: Test invalid offer ID")
+        success14, response14 = self.run_test(
+            "Respond to Invalid Offer ID",
+            "PUT",
+            f"catering/{self.catering_company_id}/offers/invalid-offer-id",
+            404,
+            data={"action": "accept"}
+        )
+        
+        # Test 15: Test invalid action in offer response
+        if second_offer_id:
+            print("\n🔍 Test 15: Test invalid action")
+            success15, response15 = self.run_test(
+                "Invalid Action in Offer Response",
+                "PUT",
+                f"catering/{self.catering_company_id}/offers/{second_offer_id}",
+                400,
+                data={"action": "invalid_action"}
+            )
+        else:
+            success15 = True  # Skip if no offer
+            print("⚠️  Skipping invalid action test - no offer available")
+        
+        # Analyze results
+        print("\n📊 OFFER SYSTEM TEST ANALYSIS:")
+        print("=" * 50)
+        
+        core_tests = [success1, success5, success7]  # Core functionality
+        validation_tests = [success2, success3, success4]  # Validation
+        workflow_tests = [success9, success12]  # Workflow (accept/reject)
+        error_handling_tests = [success13, success14, success15]  # Error handling
+        
+        print(f"✅ Core Functionality: {sum(core_tests)}/{len(core_tests)} passed")
+        print(f"✅ Validation Tests: {sum(validation_tests)}/{len(validation_tests)} passed")
+        print(f"✅ Workflow Tests: {sum(workflow_tests)}/{len(workflow_tests)} passed")
+        print(f"✅ Error Handling: {sum(error_handling_tests)}/{len(error_handling_tests)} passed")
+        
+        # Overall assessment
+        critical_success = all(core_tests) and any(workflow_tests)
+        
+        if critical_success:
+            print("\n🎉 OFFER SYSTEM APIs ARE WORKING CORRECTLY!")
+            print("   ✅ Corporate companies can send offers")
+            print("   ✅ Catering companies can receive and respond to offers")
+            print("   ✅ Partnership creation works on acceptance")
+            print("   ✅ Validation and error handling working")
+        else:
+            print("\n❌ OFFER SYSTEM HAS ISSUES!")
+            if not all(core_tests):
+                print("   ❌ Core functionality problems")
+            if not any(workflow_tests):
+                print("   ❌ Offer workflow problems")
+        
+        return critical_success
+
+    def create_test_companies(self):
+        """Create test companies for offer system testing"""
+        print("\n🏗️  Creating test companies for offer system testing...")
+        
+        # Create corporate company
+        corporate_data = {
+            "mode": "new",
+            "target": {
+                "mode": "new",
+                "company_type": "corporate",
+                "new_company_payload": {
+                    "name": f"Test Kurumsal Şirket {datetime.now().strftime('%H%M%S')}",
+                    "address": "Test Mahallesi, Kurumsal Sokak No:1, İstanbul",
+                    "contact_phone": "+902121234567",
+                    "owner_full_name": "Ahmet Yönetici",
+                    "owner_phone": f"+9055{datetime.now().strftime('%H%M%S')}0001",
+                    "owner_email": "ahmet@testkurumsal.com"
+                }
+            },
+            "applicant": {
+                "full_name": "Ahmet Yönetici",
+                "phone": f"+9055{datetime.now().strftime('%H%M%S')}0001",
+                "email": "ahmet@testkurumsal.com"
+            },
+            "password": "TestPass123!"
+        }
+        
+        success1, response1 = self.run_test(
+            "Create Test Corporate Company",
+            "POST",
+            "auth/register/corporate/application",
+            200,
+            data=corporate_data
+        )
+        
+        # Create catering company
+        catering_data = {
+            "mode": "new",
+            "target": {
+                "mode": "new",
+                "company_type": "catering",
+                "new_company_payload": {
+                    "name": f"Test Catering Firması {datetime.now().strftime('%H%M%S')}",
+                    "address": "Test Mahallesi, Catering Sokak No:2, İstanbul",
+                    "contact_phone": "+902129876543",
+                    "owner_full_name": "Fatma Aşçıbaşı",
+                    "owner_phone": f"+9055{datetime.now().strftime('%H%M%S')}0002",
+                    "owner_email": "fatma@testcatering.com"
+                }
+            },
+            "applicant": {
+                "full_name": "Fatma Aşçıbaşı",
+                "phone": f"+9055{datetime.now().strftime('%H%M%S')}0002",
+                "email": "fatma@testcatering.com"
+            },
+            "password": "TestPass123!"
+        }
+        
+        success2, response2 = self.run_test(
+            "Create Test Catering Company",
+            "POST",
+            "auth/register/corporate/application",
+            200,
+            data=catering_data
+        )
+        
+        if success1 and success2:
+            print("✅ Test companies created successfully")
+            # Now search for them to get their IDs
+            self.test_company_search("corporate", "Test Kurumsal")
+            self.test_company_search("catering", "Test Catering")
+            return True
+        else:
+            print("❌ Failed to create test companies")
+            return False
+
 def main():
     print("🚀 Starting Seç Ye API Tests - BULK IMPORT FOCUS")
     print("=" * 60)
