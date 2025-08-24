@@ -709,7 +709,7 @@ const StorefrontManagement = ({ companyId, userRole }) => {
           )}
         </TabsContent>
 
-        {/* Orders Tab */}}
+        {/* Orders Tab */}
         <TabsContent value="orders" className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
