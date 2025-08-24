@@ -29,6 +29,13 @@ const OfferManagement = ({ companyId, userRole, companyType }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('received');
+  const [showTerminationDialog, setShowTerminationDialog] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState(null);
+  const [terminationForm, setTerminationForm] = useState({
+    reason: '',
+    message: '',
+    termination_date: ''
+  });
 
   useEffect(() => {
     loadOffers();
