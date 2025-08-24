@@ -4640,6 +4640,541 @@ async def respond_to_termination_request(
         )
 
 
+# ===== SUPPLIER PRODUCT MANAGEMENT APIs =====
+@api_router.get("/supplier/{supplier_id}/products")
+async def get_supplier_products(
+    supplier_id: str,
+    category: str = None,
+    is_active: bool = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get products for a supplier"""
+    try:
+        # Verify supplier exists
+        supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+        
+        # Build filter query
+        filter_query = {"supplier_id": supplier_id}
+        
+        if category:
+            filter_query["category"] = category
+        if is_active is not None:
+            filter_query["is_active"] = is_active
+        
+        # Get products
+        products = await db.products.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(products) > limit
+        if has_more:
+            products = products[:-1]
+        
+        # Format products
+        result_products = []
+        for product in products:
+            result_products.append({
+                "id": product["id"],
+                "supplier_id": product["supplier_id"],
+                "name": product["name"],
+                "description": product["description"],
+                "unit_type": product["unit_type"],
+                "unit_price": product["unit_price"],
+                "stock_quantity": product["stock_quantity"],
+                "minimum_order_quantity": product["minimum_order_quantity"],
+                "is_active": product["is_active"],
+                "category": product.get("category"),
+                "image_url": product.get("image_url"),
+                "created_at": product["created_at"].isoformat(),
+                "updated_at": product["updated_at"].isoformat()
+            })
+        
+        return {
+            "products": result_products,
+            "total": len(result_products),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier products error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürünler alınamadı"
+        )
+
+@api_router.post("/supplier/{supplier_id}/products")
+async def create_supplier_product(
+    supplier_id: str,
+    request: dict
+):
+    """Create a new product for supplier"""
+    try:
+        # Verify supplier exists
+        supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+        
+        # Validate required fields
+        required_fields = ["name", "description", "unit_type", "unit_price", "stock_quantity"]
+        for field in required_fields:
+            if field not in request or not request[field]:
+                raise HTTPException(status_code=400, detail=f"{field} alanı zorunludur")
+        
+        if request["unit_price"] <= 0:
+            raise HTTPException(status_code=400, detail="Birim fiyat 0'dan büyük olmalıdır")
+        
+        if request["stock_quantity"] < 0:
+            raise HTTPException(status_code=400, detail="Stok miktarı negatif olamaz")
+        
+        # Create product
+        product = {
+            "id": str(uuid.uuid4()),
+            "supplier_id": supplier_id,
+            "name": request["name"],
+            "description": request["description"],
+            "unit_type": request["unit_type"],
+            "unit_price": float(request["unit_price"]),
+            "stock_quantity": int(request["stock_quantity"]),
+            "minimum_order_quantity": int(request.get("minimum_order_quantity", 1)),
+            "is_active": True,
+            "category": request.get("category"),
+            "image_url": request.get("image_url"),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.products.insert_one(product)
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "PRODUCT_CREATED",
+            "company_id": supplier_id,
+            "meta": {
+                "product_id": product["id"],
+                "product_name": product["name"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Ürün oluşturuldu", "product_id": product["id"]}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create product error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürün oluşturulamadı"
+        )
+
+@api_router.put("/supplier/{supplier_id}/products/{product_id}")
+async def update_supplier_product(
+    supplier_id: str,
+    product_id: str,
+    request: dict
+):
+    """Update a supplier product"""
+    try:
+        # Verify product exists and belongs to supplier
+        product = await db.products.find_one({"id": product_id, "supplier_id": supplier_id})
+        if not product:
+            raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if "name" in request:
+            update_data["name"] = request["name"]
+        if "description" in request:
+            update_data["description"] = request["description"]
+        if "unit_type" in request:
+            update_data["unit_type"] = request["unit_type"]
+        if "unit_price" in request:
+            if request["unit_price"] <= 0:
+                raise HTTPException(status_code=400, detail="Birim fiyat 0'dan büyük olmalıdır")
+            update_data["unit_price"] = float(request["unit_price"])
+        if "stock_quantity" in request:
+            if request["stock_quantity"] < 0:
+                raise HTTPException(status_code=400, detail="Stok miktarı negatif olamaz")
+            update_data["stock_quantity"] = int(request["stock_quantity"])
+        if "minimum_order_quantity" in request:
+            update_data["minimum_order_quantity"] = int(request["minimum_order_quantity"])
+        if "is_active" in request:
+            update_data["is_active"] = bool(request["is_active"])
+        if "category" in request:
+            update_data["category"] = request["category"]
+        if "image_url" in request:
+            update_data["image_url"] = request["image_url"]
+        
+        # Update product
+        await db.products.update_one(
+            {"id": product_id},
+            {"$set": update_data}
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "PRODUCT_UPDATED",
+            "company_id": supplier_id,
+            "meta": {
+                "product_id": product_id,
+                "product_name": product["name"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Ürün güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update product error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürün güncellenemedi"
+        )
+
+@api_router.delete("/supplier/{supplier_id}/products/{product_id}")
+async def delete_supplier_product(
+    supplier_id: str,
+    product_id: str
+):
+    """Delete (deactivate) a supplier product"""
+    try:
+        # Verify product exists and belongs to supplier
+        product = await db.products.find_one({"id": product_id, "supplier_id": supplier_id})
+        if not product:
+            raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+        
+        # Soft delete by setting is_active to False
+        await db.products.update_one(
+            {"id": product_id},
+            {
+                "$set": {
+                    "is_active": False,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "PRODUCT_DELETED",
+            "company_id": supplier_id,
+            "meta": {
+                "product_id": product_id,
+                "product_name": product["name"]
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Ürün silindi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete product error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürün silinemedi"
+        )
+
+# ===== SUPPLIER ORDER MANAGEMENT APIs =====
+@api_router.get("/supplier/{supplier_id}/orders")
+async def get_supplier_orders(
+    supplier_id: str,
+    status_filter: str = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get orders for a supplier"""
+    try:
+        # Verify supplier exists
+        supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+        
+        # Build filter query
+        filter_query = {"supplier_id": supplier_id}
+        
+        if status_filter:
+            filter_query["status"] = status_filter
+        
+        # Get orders
+        orders = await db.orders.find(filter_query).sort("created_at", -1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(orders) > limit
+        if has_more:
+            orders = orders[:-1]
+        
+        # Get order details with catering company info and items
+        result_orders = []
+        for order in orders:
+            # Get catering company info
+            catering_company = await db.companies.find_one({"id": order["catering_id"]})
+            
+            # Get order items
+            order_items = await db.order_items.find({"order_id": order["id"]}).to_list(None)
+            items_with_products = []
+            
+            for item in order_items:
+                product = await db.products.find_one({"id": item["product_id"]})
+                items_with_products.append({
+                    "id": item["id"],
+                    "product_id": item["product_id"],
+                    "product_name": product["name"] if product else "Bilinmeyen Ürün",
+                    "product_unit_type": product["unit_type"] if product else "adet",
+                    "quantity": item["quantity"],
+                    "unit_price": item["unit_price"],
+                    "total_price": item["total_price"]
+                })
+            
+            result_orders.append({
+                "id": order["id"],
+                "supplier_id": order["supplier_id"],
+                "catering_id": order["catering_id"],
+                "catering_company_name": catering_company["name"] if catering_company else "Bilinmeyen Firma",
+                "status": order["status"],
+                "total_amount": order["total_amount"],
+                "delivery_address": order.get("delivery_address"),
+                "delivery_date": order.get("delivery_date").isoformat() if order.get("delivery_date") else None,
+                "notes": order.get("notes"),
+                "created_at": order["created_at"].isoformat(),
+                "updated_at": order["updated_at"].isoformat(),
+                "confirmed_at": order.get("confirmed_at").isoformat() if order.get("confirmed_at") else None,
+                "delivered_at": order.get("delivered_at").isoformat() if order.get("delivered_at") else None,
+                "items": items_with_products
+            })
+        
+        return {
+            "orders": result_orders,
+            "total": len(result_orders),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier orders error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Siparişler alınamadı"
+        )
+
+@api_router.get("/supplier/{supplier_id}/stats")
+async def get_supplier_stats(
+    supplier_id: str,
+    period: str = "1_month"  # "1_day", "1_week", "1_month", "1_year"
+):
+    """Get supplier statistics for different periods"""
+    try:
+        # Verify supplier exists
+        supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+        
+        # Calculate date range
+        now = datetime.now(timezone.utc)
+        if period == "1_day":
+            start_date = now - timedelta(days=1)
+        elif period == "1_week":
+            start_date = now - timedelta(weeks=1)
+        elif period == "1_month":
+            start_date = now - timedelta(days=30)
+        elif period == "1_year":
+            start_date = now - timedelta(days=365)
+        else:
+            raise HTTPException(status_code=400, detail="Geçersiz dönem")
+        
+        # Get orders in period
+        orders_in_period = await db.orders.find({
+            "supplier_id": supplier_id,
+            "created_at": {"$gte": start_date}
+        }).to_list(None)
+        
+        # Calculate stats
+        total_orders = len(orders_in_period)
+        total_revenue = sum(order["total_amount"] for order in orders_in_period)
+        delivered_orders = len([o for o in orders_in_period if o["status"] == "delivered"])
+        pending_orders = len([o for o in orders_in_period if o["status"] == "pending"])
+        
+        # Get product count
+        total_products = await db.products.count_documents({"supplier_id": supplier_id, "is_active": True})
+        
+        # Get low stock products
+        low_stock_products = await db.products.find({
+            "supplier_id": supplier_id,
+            "is_active": True,
+            "stock_quantity": {"$lt": 10}
+        }).to_list(None)
+        
+        return {
+            "period": period,
+            "total_orders": total_orders,
+            "total_revenue": total_revenue,
+            "delivered_orders": delivered_orders,
+            "pending_orders": pending_orders,
+            "total_products": total_products,
+            "low_stock_products": len(low_stock_products),
+            "low_stock_items": [
+                {
+                    "id": product["id"],
+                    "name": product["name"],
+                    "stock_quantity": product["stock_quantity"]
+                }
+                for product in low_stock_products
+            ]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier stats error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="İstatistikler alınamadı"
+        )
+
+@api_router.put("/supplier/{supplier_id}/orders/{order_id}")
+async def update_supplier_order_status(
+    supplier_id: str,
+    order_id: str,
+    request: dict
+):
+    """Update order status"""
+    try:
+        # Verify order exists and belongs to supplier
+        order = await db.orders.find_one({"id": order_id, "supplier_id": supplier_id})
+        if not order:
+            raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+        
+        new_status = request.get("status")
+        if new_status not in ["pending", "confirmed", "preparing", "delivered", "cancelled"]:
+            raise HTTPException(status_code=400, detail="Geçersiz durum")
+        
+        # Update order
+        update_data = {
+            "status": new_status,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        if new_status == "confirmed":
+            update_data["confirmed_at"] = datetime.now(timezone.utc)
+        elif new_status == "delivered":
+            update_data["delivered_at"] = datetime.now(timezone.utc)
+        
+        await db.orders.update_one(
+            {"id": order_id},
+            {"$set": update_data}
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "ORDER_STATUS_UPDATED",
+            "company_id": supplier_id,
+            "meta": {
+                "order_id": order_id,
+                "new_status": new_status
+            },
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Sipariş durumu güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update order status error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Sipariş durumu güncellenemedi"
+        )
+
+# ===== CATERING SUPPLIER SHOPPING APIs =====
+@api_router.get("/catering/{catering_id}/suppliers/{supplier_id}/products")
+async def get_supplier_products_for_catering(
+    catering_id: str,
+    supplier_id: str,
+    category: str = None,
+    search: str = "",
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get supplier products for catering company shopping"""
+    try:
+        # Verify catering company exists
+        catering = await db.companies.find_one({"id": catering_id, "type": "catering", "is_active": True})
+        if not catering:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        
+        # Verify supplier exists
+        supplier = await db.companies.find_one({"id": supplier_id, "type": "supplier", "is_active": True})
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+        
+        # Build filter query
+        filter_query = {"supplier_id": supplier_id, "is_active": True}
+        
+        if category:
+            filter_query["category"] = category
+        if search:
+            filter_query["name"] = {"$regex": search, "$options": "i"}
+        
+        # Get products
+        products = await db.products.find(filter_query).sort("name", 1).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(products) > limit
+        if has_more:
+            products = products[:-1]
+        
+        # Format products
+        result_products = []
+        for product in products:
+            result_products.append({
+                "id": product["id"],
+                "supplier_id": product["supplier_id"],
+                "name": product["name"],
+                "description": product["description"],
+                "unit_type": product["unit_type"],
+                "unit_price": product["unit_price"],
+                "stock_quantity": product["stock_quantity"],
+                "minimum_order_quantity": product["minimum_order_quantity"],
+                "category": product.get("category"),
+                "image_url": product.get("image_url")
+            })
+        
+        return {
+            "supplier_info": {
+                "id": supplier["id"],
+                "name": supplier["name"],
+                "address": supplier.get("address"),
+                "phone": supplier.get("phone")
+            },
+            "products": result_products,
+            "total": len(result_products),
+            "has_more": has_more
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get supplier products for catering error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ürünler alınamadı"
+        )
+
 # ===== GENERAL COMPANIES & PARTNERSHIPS APIs =====
 @api_router.get("/companies")
 async def get_companies(
