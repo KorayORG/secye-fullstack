@@ -332,69 +332,9 @@ const SupplierPanel = () => {
                 <p className="text-gray-600">Ürün sattığınız catering firmalarını yönetin</p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card className="border-dashed border-2 border-gray-300 hover:border-orange-300 transition-colors cursor-pointer">
-                  <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-                    <Plus className="w-12 h-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-600 mb-2">Yeni Müşteri Ekle</h3>
-                    <p className="text-sm text-gray-500">Ürün sattığınız catering firmasını ekleyin</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Lezzet Catering</CardTitle>
-                    <CardDescription>Premium Catering Hizmetleri</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Aylık Sipariş:</span>
-                        <span className="font-medium">₺45.000</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Son Sipariş:</span>
-                        <span className="font-medium">3 gün önce</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Durum:</span>
-                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2 mt-4">
-                      <Button size="sm" className="flex-1">Siparişler</Button>
-                      <Button size="sm" variant="outline">İletişim</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Şef Mutfak Ltd.</CardTitle>
-                    <CardDescription>Kurumsal Catering</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Aylık Sipariş:</span>
-                        <span className="font-medium">₺32.500</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Son Sipariş:</span>
-                        <span className="font-medium">1 hafta önce</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Durum:</span>
-                        <Badge className="bg-green-100 text-green-800">Aktif</Badge>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2 mt-4">
-                      <Button size="sm" className="flex-1">Siparişler</Button>
-                      <Button size="sm" variant="outline">İletişim</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              {/* TODO: Burada sadece veritabanından gelen catering firmaları listelenmeli. Şu an örnek/hardcoded kartlar kaldırıldı. */}
+              {/* Eğer catering firmaları API'den geliyorsa, burada map ile render edebilirsiniz. */}
+              <div className="text-gray-500">Veritabanında kayıtlı catering firmaları burada listelenecek.</div>
             </div>
           </TabsContent>
 

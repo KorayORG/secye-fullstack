@@ -3343,24 +3343,25 @@ def get_highest_role(roles: List[str]) -> Optional[str]:
 async def admin_login(request: AdminLoginRequest):
     """Admin login endpoint"""
     try:
+        # DEBUG: Log incoming request and loaded env variables
+        print("[DEBUG] ADMIN LOGIN REQUEST username:", request.username)
+        print("[DEBUG] ADMIN LOGIN REQUEST password:", request.password)
+        print("[DEBUG] ENV MASTER_ADMIN_USERNAME:", os.environ.get('MASTER_ADMIN_USERNAME'))
+        print("[DEBUG] ENV MASTER_ADMIN_PASSWORD:", os.environ.get('MASTER_ADMIN_PASSWORD'))
         master_username = os.environ.get('MASTER_ADMIN_USERNAME')
         master_password = os.environ.get('MASTER_ADMIN_PASSWORD')
-        
         if request.username != master_username or request.password != master_password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Geçersiz admin kullanıcı adı veya şifre"
             )
-        
         # Create admin token
         token = create_admin_token(request.username)
-        
         return AdminLoginResponse(
             success=True,
             token=token,
             message="Master admin girişi başarılı"
         )
-        
     except HTTPException:
         raise
     except Exception as e:
