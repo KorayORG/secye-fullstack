@@ -19,10 +19,12 @@ const StoreOrders = ({ companyId }) => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API}/supplier/${companyId}/orders`);
+      const res = await axios.get(`${API}/orders`, {
+        params: { supplier_id: companyId }
+      });
       setOrders(res.data.orders || []);
     } catch (err) {
-      setError('Siparişler yüklenemedi.');
+      setError('Siparişler yüklenemedi: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
