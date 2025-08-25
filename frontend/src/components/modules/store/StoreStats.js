@@ -20,10 +20,19 @@ const StoreStats = ({ companyId }) => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API}/supplier/${companyId}/stats`, { params: { period } });
+      // Period değerini backend'in beklediği formata çevir
+      let backendPeriod = period;
+      if (period === 'day') backendPeriod = '1_day';
+      if (period === 'week') backendPeriod = '1_week';
+      if (period === 'month') backendPeriod = '1_month';
+      if (period === 'year') backendPeriod = '1_year';
+      
+      const res = await axios.get(`${API}/supplier/${companyId}/stats`, { 
+        params: { period: backendPeriod } 
+      });
       setStats(res.data);
     } catch (err) {
-      setError('İstatistikler yüklenemedi.');
+      setError('İstatistikler yüklenemedi: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
