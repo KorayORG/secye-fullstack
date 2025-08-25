@@ -31,6 +31,18 @@ const StoreOrders = ({ companyId }) => {
     }
   };
 
+  const handleOrderStatusChange = async (orderId, newStatus) => {
+    setOrderStatusUpdating((prev) => ({ ...prev, [orderId]: true }));
+    try {
+      await axios.patch(`${API}/orders/${orderId}`, { status: newStatus });
+      setOrders((prev) => prev.map(order => order.id === orderId ? { ...order, status: newStatus } : order));
+    } catch (err) {
+      alert('Durum güncellenemedi: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setOrderStatusUpdating((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   return (
     <div>
       <h3 className="text-xl font-semibold mb-2">Siparişler</h3>
