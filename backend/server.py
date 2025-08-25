@@ -391,6 +391,30 @@ class OrderItem(BaseModel):
     total_price: float
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# Bireysel kullanıcı modelleri
+class MealChoice(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    company_id: str
+    catering_id: str
+    date: str  # YYYY-MM-DD format
+    choice: Literal['ALTERNATIF', 'GELENEKSEL']
+    stars: Optional[int] = Field(None, ge=1, le=5)  # 1-5 yıldız rating
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Request(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    company_id: str
+    title: str
+    message: str
+    tags: List[str] = Field(default_factory=list)
+    urgency: Literal['low', 'med', 'high'] = 'med'
+    status: Literal['open', 'in_progress', 'resolved', 'closed'] = 'open'
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Request/Response models
 class LoginRequest(BaseModel):
     phone: str
