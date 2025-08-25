@@ -138,11 +138,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Offer System - Corporate Panel"
-    - "Offer System - Catering Panel"
-    - "Partnership Verification System"
-    - "Login and Authentication System"
-    - "UI Components and Responsive Design"
+    - "Supplier Dashboard Real Data Implementation"
+    - "Supplier Dashboard Real Data Display"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
