@@ -95,63 +95,33 @@ class IndividualUserTester:
 
     def setup_test_data(self):
         """Setup test users and companies for testing"""
-        print("\n🔧 Setting up test data...")
+        print("\n🔧 Using pre-created test data...")
         
-        # Find a corporate company for testing
+        # Use pre-created test data
+        self.test_company_id = "test-corp-1"
+        self.other_company_id = "test-corp-2"
+        self.test_user_id = "test-user-1"
+        self.test_phone = "+905551111111"
+        self.test_password = "1234"
+        
+        print(f"   Using company: Test Corporate Company 1 (ID: {self.test_company_id})")
+        print(f"   Using other company for isolation test: Test Corporate Company 2 (ID: {self.other_company_id})")
+        print(f"   Using test user: Test Individual User 1 (Phone: {self.test_phone})")
+        
+        # Verify companies exist
         success, response = self.run_test(
-            "Find Corporate Company",
+            "Verify Test Company Exists",
             "GET",
             "companies/search",
             200,
-            params={"type": "corporate", "limit": 1}
+            params={"type": "corporate", "query": "Test Corporate"}
         )
         
-        if success and response.get('companies'):
-            self.test_company_id = response['companies'][0]['id']
-            print(f"   Using company: {response['companies'][0]['name']} (ID: {self.test_company_id})")
-        else:
-            print("❌ No corporate company found for testing")
-            return False
-            
-        # Find another company for tenant isolation testing
-        success, response = self.run_test(
-            "Find Another Corporate Company",
-            "GET",
-            "companies/search",
-            200,
-            params={"type": "corporate", "limit": 5}
-        )
-        
-        if success and response.get('companies') and len(response['companies']) > 1:
-            self.other_company_id = response['companies'][1]['id']
-            print(f"   Using other company for isolation test: {response['companies'][1]['name']} (ID: {self.other_company_id})")
-        
-        # Generate unique test phone number
-        timestamp = datetime.now().strftime('%H%M%S')
-        self.test_phone = f"+9055{timestamp}1111"
-        
-        # Create test user with company membership
-        test_user_data = {
-            "full_name": "Test Individual User",
-            "phone": self.test_phone,
-            "password": self.test_password,
-            "company_type": "corporate",
-            "company_id": self.test_company_id
-        }
-        
-        success, response = self.run_test(
-            "Create Test Individual User",
-            "POST",
-            "auth/register/individual",
-            200,
-            data=test_user_data
-        )
-        
-        if success:
-            print("✅ Test user created successfully")
+        if success and response.get('companies') and len(response['companies']) >= 2:
+            print("✅ Test companies verified")
             return True
         else:
-            print("❌ Failed to create test user")
+            print("❌ Test companies not found. Please run setup_test_data.py first")
             return False
 
     def test_crypto_encrypt_endpoint(self):
