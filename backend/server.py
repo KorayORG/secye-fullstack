@@ -126,6 +126,41 @@ async def get_orders(
         logger.error(f"Get orders error: {e}")
         raise HTTPException(status_code=500, detail="Siparişler alınamadı")
 
+# ===== ORDER UPDATE API =====
+@api_router.patch("/orders/{order_id}")
+async def update_order_status(order_id: str, request: dict):
+    """
+    Sipariş durumunu günceller
+    """
+    try:
+        # Siparişi bul
+        order = await db.orders.find_one({"id": order_id})
+        if not order:
+            raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+        
+        # Güncelleme verilerini hazırla
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if "status" in request:
+            update_data["status"] = request["status"]
+        
+        if "notes" in request:
+            update_data["notes"] = request["notes"]
+        
+        # Siparişi güncelle
+        await db.orders.update_one(
+            {"id": order_id},
+            {"$set": update_data}
+        )
+        
+        return {"success": True, "message": "Sipariş durumu güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update order error: {e}")
+        raise HTTPException(status_code=500, detail="Sipariş güncellenemedi")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
