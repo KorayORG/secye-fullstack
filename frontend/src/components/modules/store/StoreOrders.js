@@ -35,36 +35,62 @@ const StoreOrders = ({ companyId }) => {
       <h3 className="text-xl font-semibold mb-2">Siparişler</h3>
       {loading && <div>Yükleniyor...</div>}
       {error && <div className="text-red-600">{error}</div>}
-      <div className="overflow-x-auto mt-4">
-        <table className="min-w-full border text-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 border">Alıcı</th>
-              <th className="p-2 border">Ürün</th>
-              <th className="p-2 border">Miktar</th>
-              <th className="p-2 border">Birim</th>
-              <th className="p-2 border">Fiyat</th>
-              <th className="p-2 border">Durum</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 ? (
-              <tr><td colSpan={6} className="text-center p-4">Henüz sipariş yok.</td></tr>
-            ) : (
-              orders.map((order, idx) => (
-                <tr key={idx}>
-                  <td className="p-2 border">{order.buyer_name}</td>
-                  <td className="p-2 border">{order.product_name}</td>
-                  <td className="p-2 border">{order.quantity}</td>
-                  <td className="p-2 border">{order.unit}</td>
-                  <td className="p-2 border">₺{order.price}</td>
-                  <td className="p-2 border">{order.status}</td>
+      {orders.length === 0 ? (
+        <div className="text-center p-8 text-gray-500">Sipariş bulunamadı</div>
+      ) : (
+        <div className="overflow-x-auto mt-4">
+          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="py-2 px-3 text-left text-sm font-semibold">Alıcı</th>
+                <th className="py-2 px-3 text-left text-sm font-semibold">Ürünler</th>
+                <th className="py-2 px-3 text-left text-sm font-semibold">Toplam Tutar</th>
+                <th className="py-2 px-3 text-left text-sm font-semibold">Durum</th>
+                <th className="py-2 px-3 text-left text-sm font-semibold">Tarih</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map(order => (
+                <tr key={order.id} className="border-b">
+                  <td className="py-2 px-3">{order.buyer_company_name || order.catering_id}</td>
+                  <td className="py-2 px-3">
+                    {order.items && order.items.length > 0 ? (
+                      <ul className="list-disc ml-4">
+                        {order.items.map((item, idx) => (
+                          <li key={idx} className="mb-1 text-sm">
+                            <span className="font-semibold">{item.product_name || item.product_id}</span>
+                            {" - "}
+                            <span>{item.quantity || '-'} {item.unit_type || item.unit || ''}</span>
+                            {" - "}
+                            <span>₺{item.unit_price ? Number(item.unit_price).toFixed(2) : '-'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </td>
+                  <td className="py-2 px-3">₺{order.total_amount?.toFixed(2) || '0.00'}</td>
+                  <td className="py-2 px-3">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'preparing' ? 'bg-orange-100 text-orange-800' :
+                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-sm">
+                    {order.created_at ? new Date(order.created_at).toLocaleDateString('tr-TR') : '-'}
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
