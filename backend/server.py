@@ -979,22 +979,23 @@ async def get_supplier_dashboard(company_id: str):
         if not company:
             raise HTTPException(status_code=404, detail="Şirket bulunamadı")
         
-        # Count orders
-        total_orders = await db.supplier_orders.count_documents({
+        # Toplam Sipariş - Şimdiye kadar alınan toplam sipariş sayısı
+        total_orders = await db.orders.count_documents({
             "supplier_id": company_id
-        }) if 'supplier_orders' in await db.list_collection_names() else 0
+        })
         
-        # Count products
-        product_variety = await db.supplier_products.count_documents({
-            "supplier_id": company_id
-        }) if 'supplier_products' in await db.list_collection_names() else 0
+        # Ürün Çeşidi - Mağazada kaç çeşit aktif ürün varsa
+        product_variety = await db.products.count_documents({
+            "supplier_id": company_id,
+            "is_active": True
+        })
         
-        # Count recent orders (last 30 days)
+        # Son 30 Gün - Stats API'sindeki gibi son 30 günlük sipariş sayısı
         recent_date = datetime.now(timezone.utc) - timedelta(days=30)
-        recent_orders = await db.supplier_orders.count_documents({
+        recent_orders = await db.orders.count_documents({
             "supplier_id": company_id,
             "created_at": {"$gte": recent_date}
-        }) if 'supplier_orders' in await db.list_collection_names() else 0
+        })
         
         # Count partner caterings
         partner_caterings = 0  # Placeholder - we'll implement this when we add supplier-catering relationships
