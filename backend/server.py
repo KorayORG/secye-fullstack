@@ -99,6 +99,25 @@ async def get_orders(
         suppliers = {s["id"]: s for s in await db.companies.find({"id": {"$in": supplier_ids}}).to_list(None)}
         caterings = {c["id"]: c for c in await db.companies.find({"id": {"$in": catering_ids}}).to_list(None)}
 
+        # Ürün isimlerini ekle - tüm product_id'leri topla
+        all_product_ids = []
+        for order in orders:
+            if order.get("items"):
+                for item in order["items"]:
+                    if item.get("product_id") and item["product_id"] not in all_product_ids:
+                        all_product_ids.append(item["product_id"])
+        
+        # Ürünleri çek
+        products = {}
+        if all_product_ids:
+            products_list = await db.products.find({"id": {"$in": all_product_ids}}).to_list(None)
+            products = {p["id"]: p for p in products_list}
+            
+            # Eğer products collection'ı yoksa supplier_products'tan çek
+            if not products_list:
+                supplier_products_list = await db.supplier_products.find({"id": {"$in": all_product_ids}}).to_list(None)
+                products = {p["id"]: p for p in supplier_products_list}
+
         def serialize(obj):
             if isinstance(obj, ObjectId):
                 return str(obj)
