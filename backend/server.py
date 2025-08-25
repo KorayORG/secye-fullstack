@@ -4972,18 +4972,10 @@ async def delete_supplier_product(
         product = await db.products.find_one({"id": product_id, "supplier_id": supplier_id})
         if not product:
             raise HTTPException(status_code=404, detail="Ürün bulunamadı")
-        
-        # Soft delete by setting is_active to False
-        await db.products.update_one(
-            {"id": product_id},
-            {
-                "$set": {
-                    "is_active": False,
-                    "updated_at": datetime.now(timezone.utc)
-                }
-            }
-        )
-        
+
+        # Hard delete: remove the product document
+        await db.products.delete_one({"id": product_id, "supplier_id": supplier_id})
+
         # Log the action
         audit_log = {
             "id": str(uuid.uuid4()),
@@ -4996,9 +4988,9 @@ async def delete_supplier_product(
             "created_at": datetime.now(timezone.utc)
         }
         await db.audit_logs.insert_one(audit_log)
-        
+
         return {"success": True, "message": "Ürün silindi"}
-        
+
     except HTTPException:
         raise
     except Exception as e:

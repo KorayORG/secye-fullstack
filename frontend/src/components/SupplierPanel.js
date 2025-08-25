@@ -277,69 +277,31 @@ const SupplierPanel = () => {
           {/* General Tab - Dashboard */}
           <TabsContent value="general" className="space-y-6">
             {dashboardStats && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Son 30 Gün</CardTitle>
-                      <Truck className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stats?.total_orders ?? 0}</div>
-                      <p className="text-xs text-muted-foreground">Yeni sipariş</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Ürün Çeşidi</CardTitle>
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stats?.total_products ?? 0}</div>
-                      <p className="text-xs text-muted-foreground">Stok çeşit sayısı</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Toplam Sipariş</CardTitle>
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{dashboardStats.total_orders}</div>
-                      <p className="text-xs text-muted-foreground">Satır adedi</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Recent Activities */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Son Aktiviteler</CardTitle>
-                    <CardDescription>Son sistem hareketleri</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {dashboardStats.recent_activities.length > 0 ? (
-                        dashboardStats.recent_activities.map((activity, index) => (
-                          <div key={index} className="flex items-center space-x-3">
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{activity.description}</p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(activity.timestamp).toLocaleString('tr-TR')}
-                              </p>
-                            </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Son Aktiviteler</CardTitle>
+                  <CardDescription>Son sistem hareketleri</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {dashboardStats.recent_activities.length > 0 ? (
+                      dashboardStats.recent_activities.map((activity, index) => (
+                        <div key={index} className="flex items-center space-x-3">
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{activity.description}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(activity.timestamp).toLocaleString('tr-TR')}
+                            </p>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-gray-500">Henüz aktivite bulunmamaktadır.</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">Henüz aktivite bulunmamaktadır.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 

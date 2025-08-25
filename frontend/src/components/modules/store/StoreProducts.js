@@ -112,15 +112,27 @@ const StoreProducts = ({ companyId }) => {
   };
 
   const handleDelete = async (index) => {
-    if (!window.confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
+    const product = products[index];
+    if (!product || !product.id || !companyId) {
+      setError('Silinecek ürün veya şirket bilgisi eksik.');
+      return;
+    }
+    if (!window.confirm(`"${product.name}" adlı ürünü silmek istediğinize emin misiniz?`)) return;
     setLoading(true);
     setError('');
     try {
-      const product = products[index];
-      await axios.delete(`${API}/supplier/${companyId}/products/${product.id}`);
-      await fetchProducts();
+      const response = await axios.delete(`${API}/supplier/${companyId}/products/${product.id}`);
+      if (response.data && response.data.success) {
+        await fetchProducts();
+      } else {
+        setError(response.data?.message || 'Ürün silinemedi (API yanıtı başarısız).');
+      }
     } catch (err) {
-      setError('Ürün silinemedi.');
+      setError(
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Ürün silinemedi (sunucu hatası).'
+      );
     } finally {
       setLoading(false);
     }
@@ -199,9 +211,9 @@ const StoreProducts = ({ companyId }) => {
                 <tr key={idx}>
                   <td className="p-2 border">{product.name}</td>
                   <td className="p-2 border">{product.description}</td>
-                  <td className="p-2 border">{product.price}</td>
-                  <td className="p-2 border">{product.quantity}</td>
-                  <td className="p-2 border">{product.unit}</td>
+                  <td className="p-2 border">{product.unit_price}</td>
+                  <td className="p-2 border">{product.stock_quantity}</td>
+                  <td className="p-2 border">{product.unit_type}</td>
                   <td className="p-2 border">
                     <button className="text-blue-600 mr-2" onClick={() => handleOpenForm(idx)}>Düzenle</button>
                     <button className="text-red-600" onClick={() => handleDelete(idx)}>Sil</button>
