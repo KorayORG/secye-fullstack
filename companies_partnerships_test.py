@@ -18,7 +18,7 @@ load_dotenv('frontend/.env')
 class CompaniesPartnershipsAPITester:
     def __init__(self):
         # Use the production backend URL from frontend/.env
-        self.backend_url = os.getenv('REACT_APP_BACKEND_URL', 'https://foodsupply-sys.preview.emergentagent.com')
+        self.backend_url = os.getenv('REACT_APP_BACKEND_URL', 'https://secure-tenant-login.preview.emergentagent.com')
         self.api_url = f"{self.backend_url}/api"
         self.tests_run = 0
         self.tests_passed = 0

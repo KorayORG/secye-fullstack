@@ -4,7 +4,7 @@ from datetime import datetime
 
 def test_catering_message_api():
     """Debug catering message API"""
-    base_url = "https://foodsupply-sys.preview.emergentagent.com/api"
+    base_url = "https://secure-tenant-login.preview.emergentagent.com/api"
     company_id = "3cbb8b6a-264f-43c9-9673-aa8ccecb4977"  # LezzetSepeti
     
     # Test 1: Check what the API expects
@@ -33,7 +33,7 @@ def test_catering_message_api():
 
 def test_catering_audit_logs():
     """Debug catering audit logs API"""
-    base_url = "https://foodsupply-sys.preview.emergentagent.com/api"
+    base_url = "https://secure-tenant-login.preview.emergentagent.com/api"
     company_id = "3cbb8b6a-264f-43c9-9673-aa8ccecb4977"  # LezzetSepeti
     
     print("\n🔍 Testing Catering Audit Logs API...")
@@ -52,7 +52,7 @@ def test_catering_audit_logs():
 
 def test_supplier_message_api():
     """Debug supplier message API"""
-    base_url = "https://foodsupply-sys.preview.emergentagent.com/api"
+    base_url = "https://secure-tenant-login.preview.emergentagent.com/api"
     company_id = "d0bd07d2-4caf-4d0a-8f8e-fbbfd5a67a4e"  # TazeMarket
     
     print("\n🔍 Testing Supplier Message API...")
