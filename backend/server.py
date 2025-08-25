@@ -5298,11 +5298,14 @@ async def create_order_for_catering_supplier(
             "catering_id": catering_id,
             "status": "pending",
             "total_amount": total_amount,
+            "items": order_items,  # Items'ı burada da tut
             "notes": notes,
             "created_at": now,
             "updated_at": now
         }
         await db.orders.insert_one(order_doc)
+        
+        # Ayrıca order_items collection'ına da ekle (backward compatibility için)
         for item in order_items:
             item_doc = dict(item)
             item_doc["order_id"] = order_id
