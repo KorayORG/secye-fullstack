@@ -5574,6 +5574,574 @@ async def get_partnerships(
             detail="Ortaklıklar alınamadı"
         )
 
+# ===== INDIVIDUAL USER APIs =====
+@api_router.get("/individual/{company_id}/{user_id}/dashboard")
+async def get_individual_dashboard(company_id: str, user_id: str):
+    """Get individual user dashboard with tenant security"""
+    try:
+        from lib.crypto import decrypt_id, EncryptionError
+        
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Check tenant membership
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        # Get company info
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Get dashboard stats
+        today = datetime.now(timezone.utc).date()
+        
+        # Count pending meal choices for this week
+        pending_choices = 0  # Will implement after meal system
+        
+        # Count unrated meals  
+        unrated_meals = await db.meal_choices.count_documents({
+            "user_id": user_id,
+            "company_id": company_id,
+            "stars": None
+        }) if 'meal_choices' in await db.list_collection_names() else 0
+        
+        # Count active suggestions/requests
+        active_suggestions = await db.requests.count_documents({
+            "user_id": user_id,
+            "company_id": company_id,
+            "status": {"$in": ["open", "in_progress"]}
+        }) if 'requests' in await db.list_collection_names() else 0
+        
+        # Get recent activities
+        recent_activities = [
+            {
+                "type": "MEAL_CHOICE",
+                "description": "Bugünkü menü seçimini yapmayı unutmayın",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        
+        return {
+            "user": {
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"]
+            },
+            "company": {
+                "id": company["id"],
+                "name": company["name"],
+                "type": company["type"]
+            },
+            "stats": {
+                "pending_choices": pending_choices,
+                "unrated_meals": unrated_meals,
+                "active_suggestions": active_suggestions,
+                "new_notifications": 0
+            },
+            "recent_activities": recent_activities
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Individual dashboard error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Dashboard verileri alınamadı"
+        )
+
+@api_router.get("/individual/{company_id}/{user_id}/meal-choices")
+async def get_individual_meal_choices(
+    company_id: str, 
+    user_id: str,
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    limit: int = Query(30)
+):
+    """Get individual user meal choices with filtering"""
+    try:
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        # Build filter query
+        filter_query = {
+            "user_id": user_id,
+            "company_id": company_id
+        }
+        
+        if from_date:
+            filter_query["date"] = {"$gte": from_date}
+        if to_date:
+            if "date" in filter_query:
+                filter_query["date"]["$lte"] = to_date
+            else:
+                filter_query["date"] = {"$lte": to_date}
+        
+        # Get meal choices
+        meal_choices = await db.meal_choices.find(filter_query)\
+            .sort("date", -1).limit(limit).to_list(None)
+        
+        # Format results
+        result_choices = []
+        for choice in meal_choices:
+            result_choices.append({
+                "id": choice["id"],
+                "date": choice["date"],
+                "choice": choice["choice"],
+                "stars": choice.get("stars"),
+                "catering_id": choice["catering_id"],
+                "created_at": choice["created_at"].isoformat()
+            })
+        
+        return {
+            "meal_choices": result_choices,
+            "total": len(result_choices)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get meal choices error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Yemek seçimleri alınamadı"
+        )
+
+@api_router.post("/individual/{company_id}/{user_id}/meal-choices")
+async def create_meal_choice(
+    company_id: str,
+    user_id: str,
+    choice_data: Dict[str, Any]
+):
+    """Create or update meal choice"""
+    try:
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        # Validate required fields
+        required_fields = ["date", "choice", "catering_id"]
+        for field in required_fields:
+            if field not in choice_data:
+                raise HTTPException(status_code=400, detail=f"'{field}' alanı zorunludur")
+        
+        # Check if choice already exists for this date
+        existing_choice = await db.meal_choices.find_one({
+            "user_id": user_id,
+            "company_id": company_id,
+            "date": choice_data["date"]
+        })
+        
+        if existing_choice:
+            # Update existing choice
+            await db.meal_choices.update_one(
+                {"id": existing_choice["id"]},
+                {"$set": {
+                    "choice": choice_data["choice"],
+                    "catering_id": choice_data["catering_id"],
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            return {"success": True, "message": "Yemek seçimi güncellendi"}
+        else:
+            # Create new choice
+            meal_choice = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "company_id": company_id,
+                "catering_id": choice_data["catering_id"],
+                "date": choice_data["date"],
+                "choice": choice_data["choice"],
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            await db.meal_choices.insert_one(meal_choice)
+            return {"success": True, "message": "Yemek seçimi kaydedildi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create meal choice error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Yemek seçimi kaydedilemedi"
+        )
+
+@api_router.patch("/individual/{company_id}/{user_id}/meal-choices/{choice_id}/stars")
+async def update_meal_choice_stars(
+    company_id: str,
+    user_id: str,
+    choice_id: str,
+    star_data: Dict[str, int]
+):
+    """Update meal choice star rating"""
+    try:
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        # Validate stars
+        if "stars" not in star_data or not (1 <= star_data["stars"] <= 5):
+            raise HTTPException(status_code=400, detail="Yıldız değeri 1-5 arasında olmalıdır")
+        
+        # Update meal choice
+        result = await db.meal_choices.update_one(
+            {
+                "id": choice_id,
+                "user_id": user_id,
+                "company_id": company_id
+            },
+            {"$set": {
+                "stars": star_data["stars"],
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Yemek seçimi bulunamadı")
+        
+        return {"success": True, "message": "Puan güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update meal choice stars error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Puan güncellenemedi"
+        )
+
+@api_router.get("/individual/{company_id}/{user_id}/requests")
+async def get_individual_requests(
+    company_id: str,
+    user_id: str,
+    status: Optional[str] = Query(None),
+    limit: int = Query(50)
+):
+    """Get individual user requests/suggestions"""
+    try:
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        # Build filter query
+        filter_query = {
+            "user_id": user_id,
+            "company_id": company_id
+        }
+        
+        if status and status != "all":
+            filter_query["status"] = status
+        
+        # Get requests
+        requests = await db.requests.find(filter_query)\
+            .sort("created_at", -1).limit(limit).to_list(None)
+        
+        # Format results
+        result_requests = []
+        for request in requests:
+            result_requests.append({
+                "id": request["id"],
+                "title": request["title"],
+                "message": request["message"],
+                "tags": request["tags"],
+                "urgency": request["urgency"],
+                "status": request["status"],
+                "created_at": request["created_at"].isoformat()
+            })
+        
+        return {
+            "requests": result_requests,
+            "total": len(result_requests)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get requests error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="İstekler alınamadı"
+        )
+
+@api_router.post("/individual/{company_id}/{user_id}/requests")
+async def create_individual_request(
+    company_id: str,
+    user_id: str,
+    request_data: Dict[str, Any]
+):
+    """Create new request/suggestion"""
+    try:
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        # Validate required fields
+        required_fields = ["title", "message"]
+        for field in required_fields:
+            if field not in request_data:
+                raise HTTPException(status_code=400, detail=f"'{field}' alanı zorunludur")
+        
+        # Create new request
+        new_request = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "company_id": company_id,
+            "title": request_data["title"],
+            "message": request_data["message"],
+            "tags": request_data.get("tags", []),
+            "urgency": request_data.get("urgency", "med"),
+            "status": "open",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        await db.requests.insert_one(new_request)
+        
+        return {
+            "success": True,
+            "message": "İstek/öneri başarıyla gönderildi",
+            "request_id": new_request["id"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create request error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="İstek gönderilemedi"
+        )
+
+@api_router.put("/individual/{company_id}/{user_id}/profile")
+async def update_individual_profile(
+    company_id: str,
+    user_id: str,
+    profile_data: Dict[str, Any]
+):
+    """Update individual user profile (password change, etc.)"""
+    try:
+        # Verify user and tenant membership
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            raise HTTPException(status_code=403, detail="Bu şirket için erişiminiz yok")
+        
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        # Handle password change
+        if "current_password" in profile_data and "new_password" in profile_data:
+            try:
+                ph.verify(user['password_hash'], profile_data["current_password"])
+            except VerifyMismatchError:
+                raise HTTPException(status_code=400, detail="Mevcut şifre hatalı")
+            
+            new_password_hash = ph.hash(profile_data["new_password"])
+            update_data["password_hash"] = new_password_hash
+        
+        # Handle other profile updates (future: phone number update)
+        # Phone number is read-only for now as mentioned in requirements
+        
+        # Update user
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": update_data}
+        )
+        
+        return {"success": True, "message": "Profil güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update profile error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Profil güncellenemedi"
+        )
+
+# ===== ANALYTICS APIs (Corporate ↔ Catering) =====
+@api_router.get("/analytics/catering/{catering_id}/last7days")
+async def get_catering_last7days_analytics(catering_id: str):
+    """Get last 7 days meal choice analytics for catering company"""
+    try:
+        # Verify catering company exists
+        catering = await db.companies.find_one({
+            "id": catering_id,
+            "type": "catering",
+            "is_active": True
+        })
+        if not catering:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        
+        # Calculate last 7 days
+        end_date = datetime.now(timezone.utc).date()
+        start_date = end_date - timedelta(days=7)
+        
+        # Get daily statistics
+        daily_stats = []
+        for i in range(7):
+            current_date = start_date + timedelta(days=i)
+            date_str = current_date.strftime("%Y-%m-%d")
+            
+            # Count choices for this date
+            alternatif_count = await db.meal_choices.count_documents({
+                "catering_id": catering_id,
+                "date": date_str,
+                "choice": "ALTERNATIF"
+            }) if 'meal_choices' in await db.list_collection_names() else 0
+            
+            geleneksel_count = await db.meal_choices.count_documents({
+                "catering_id": catering_id,
+                "date": date_str,
+                "choice": "GELENEKSEL"
+            }) if 'meal_choices' in await db.list_collection_names() else 0
+            
+            daily_stats.append({
+                "date": date_str,
+                "alternatif": alternatif_count,
+                "geleneksel": geleneksel_count,
+                "total": alternatif_count + geleneksel_count
+            })
+        
+        return {
+            "catering_id": catering_id,
+            "catering_name": catering["name"],
+            "period": "last_7_days",
+            "daily_stats": daily_stats
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Catering 7-day analytics error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Analiz verileri alınamadı"
+        )
+
+@api_router.get("/analytics/catering/{catering_id}/aggregate")
+async def get_catering_aggregate_analytics(
+    catering_id: str,
+    range: str = Query(..., regex="^(1d|1w|1m|1y|all)$")
+):
+    """Get aggregated meal choice analytics with time range filtering"""
+    try:
+        # Verify catering company exists
+        catering = await db.companies.find_one({
+            "id": catering_id,
+            "type": "catering",
+            "is_active": True
+        })
+        if not catering:
+            raise HTTPException(status_code=404, detail="Catering firması bulunamadı")
+        
+        # Calculate date range
+        end_date = datetime.now(timezone.utc)
+        if range == "1d":
+            start_date = end_date - timedelta(days=1)
+        elif range == "1w":
+            start_date = end_date - timedelta(weeks=1)
+        elif range == "1m":
+            start_date = end_date - timedelta(days=30)
+        elif range == "1y":
+            start_date = end_date - timedelta(days=365)
+        else:  # "all"
+            start_date = datetime.min.replace(tzinfo=timezone.utc)
+        
+        # Build date filter
+        date_filter = {
+            "catering_id": catering_id,
+            "created_at": {"$gte": start_date, "$lte": end_date}
+        }
+        
+        # Get aggregated counts
+        alternatif_total = await db.meal_choices.count_documents({
+            **date_filter,
+            "choice": "ALTERNATIF"
+        }) if 'meal_choices' in await db.list_collection_names() else 0
+        
+        geleneksel_total = await db.meal_choices.count_documents({
+            **date_filter,
+            "choice": "GELENEKSEL"
+        }) if 'meal_choices' in await db.list_collection_names() else 0
+        
+        # Calculate catering score (average stars)
+        pipeline = [
+            {"$match": {**date_filter, "stars": {"$exists": True, "$ne": None}}},
+            {"$group": {
+                "_id": None,
+                "avg_stars": {"$avg": "$stars"},
+                "total_rated": {"$sum": 1}
+            }}
+        ]
+        
+        avg_result = await db.meal_choices.aggregate(pipeline).to_list(None) \
+            if 'meal_choices' in await db.list_collection_names() else []
+        
+        catering_score = avg_result[0]["avg_stars"] if avg_result else 0.0
+        total_rated_meals = avg_result[0]["total_rated"] if avg_result else 0
+        
+        return {
+            "catering_id": catering_id,
+            "catering_name": catering["name"],
+            "period": range,
+            "date_range": {
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat()
+            },
+            "totals": {
+                "alternatif": alternatif_total,
+                "geleneksel": geleneksel_total,
+                "total_meals": alternatif_total + geleneksel_total
+            },
+            "catering_score": {
+                "stars": round(catering_score, 2),
+                "total_rated": total_rated_meals
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Catering aggregate analytics error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Toplu analiz verileri alınamadı"
+        )
+
 # Include router
 app.include_router(api_router)
 
