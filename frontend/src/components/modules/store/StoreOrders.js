@@ -9,6 +9,7 @@ const StoreOrders = ({ companyId }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [orderStatusUpdating, setOrderStatusUpdating] = useState({});
 
   useEffect(() => {
     if (companyId) fetchOrders();
