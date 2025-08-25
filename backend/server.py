@@ -133,9 +133,20 @@ async def get_orders(
             order_serialized["supplier_company_name"] = supplier["name"] if supplier else order["supplier_id"]
             order_serialized["buyer_company_name"] = catering["name"] if catering else order["catering_id"]
             order_serialized["created_at"] = serialize(order.get("created_at"))
-            # items alanı yoksa boş dizi olarak ekle
+            
+            # Items alanı yoksa boş dizi olarak ekle
             if "items" not in order_serialized:
                 order_serialized["items"] = []
+            else:
+                # Her item için ürün ismini ekle
+                for item in order_serialized["items"]:
+                    if item.get("product_id") and item["product_id"] in products:
+                        product = products[item["product_id"]]
+                        item["product_name"] = product.get("name", item.get("product_name", item["product_id"]))
+                    elif not item.get("product_name"):
+                        # Eğer product_name yoksa ve veritabanında da bulunamazsa product_id'yi göster
+                        item["product_name"] = item.get("product_id", "Bilinmeyen Ürün")
+            
             result_orders.append(order_serialized)
 
         return {"orders": result_orders, "total": len(result_orders), "has_more": has_more}
