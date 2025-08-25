@@ -100,23 +100,27 @@ async def get_orders(
         caterings = {c["id"]: c for c in await db.companies.find({"id": {"$in": catering_ids}}).to_list(None)}
 
         # Ürün isimlerini ekle - tüm product_id'leri topla
-        all_product_ids = []
+        all_product_ids = set()
         for order in orders:
             if order.get("items"):
                 for item in order["items"]:
-                    if item.get("product_id") and item["product_id"] not in all_product_ids:
-                        all_product_ids.append(item["product_id"])
-        
-        # Ürünleri çek
+                    if item.get("product_id"):
+                        all_product_ids.add(item["product_id"])
+
+        # Ürünleri hem products hem supplier_products koleksiyonlarından çek
         products = {}
         if all_product_ids:
-            products_list = await db.products.find({"id": {"$in": all_product_ids}}).to_list(None)
+            # Önce ana products koleksiyonundan çek
+            products_list = await db.products.find({"id": {"$in": list(all_product_ids)}}).to_list(None)
             products = {p["id"]: p for p in products_list}
-            
-            # Eğer products collection'ı yoksa supplier_products'tan çek
-            if not products_list:
-                supplier_products_list = await db.supplier_products.find({"id": {"$in": all_product_ids}}).to_list(None)
-                products = {p["id"]: p for p in supplier_products_list}
+
+            # Eksik kalan product_id'ler için supplier_products'a bak
+            found_ids = set(products.keys())
+            missing_ids = list(all_product_ids - found_ids)
+            if missing_ids:
+                supplier_products_list = await db.supplier_products.find({"id": {"$in": missing_ids}}).to_list(None)
+                for p in supplier_products_list:
+                    products[p["id"]] = p
 
         def serialize(obj):
             if isinstance(obj, ObjectId):
@@ -133,20 +137,21 @@ async def get_orders(
             order_serialized["supplier_company_name"] = supplier["name"] if supplier else order["supplier_id"]
             order_serialized["buyer_company_name"] = catering["name"] if catering else order["catering_id"]
             order_serialized["created_at"] = serialize(order.get("created_at"))
-            
+
             # Items alanı yoksa boş dizi olarak ekle
             if "items" not in order_serialized:
                 order_serialized["items"] = []
             else:
                 # Her item için ürün ismini ekle
                 for item in order_serialized["items"]:
-                    if item.get("product_id") and item["product_id"] in products:
-                        product = products[item["product_id"]]
-                        item["product_name"] = product.get("name", item.get("product_name", item["product_id"]))
-                    elif not item.get("product_name"):
+                    pid = item.get("product_id")
+                    if pid and pid in products:
+                        product = products[pid]
+                        item["product_name"] = product.get("name") or f"Ürün ({pid})"
+                    else:
                         # Eğer product_name yoksa ve veritabanında da bulunamazsa product_id'yi göster
-                        item["product_name"] = item.get("product_id", "Bilinmeyen Ürün")
-            
+                        item["product_name"] = f"Bilinmeyen Ürün ({pid})" if pid else "Bilinmeyen Ürün"
+
             result_orders.append(order_serialized)
 
         return {"orders": result_orders, "total": len(result_orders), "has_more": has_more}
@@ -5071,11 +5076,14 @@ async def get_supplier_orders(
             
             for item in order_items:
                 product = await db.products.find_one({"id": item["product_id"]})
+                if not product:
+                    # Eğer ana products koleksiyonunda yoksa supplier_products'a bak
+                    product = await db.supplier_products.find_one({"id": item["product_id"]})
                 items_with_products.append({
                     "id": item["id"],
                     "product_id": item["product_id"],
                     "product_name": product["name"] if product else "Bilinmeyen Ürün",
-                    "product_unit_type": product["unit_type"] if product else "adet",
+                    "product_unit_type": product["unit_type"] if product and "unit_type" in product else (product["unit"] if product and "unit" in product else "adet"),
                     "quantity": item["quantity"],
                     "unit_price": item["unit_price"],
                     "total_price": item["total_price"]

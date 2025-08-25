@@ -421,7 +421,11 @@ const SupplierPanel = () => {
                               {order.items.map((item, idx) => (
                                 <div key={idx} className="bg-gray-50 p-2 rounded text-sm">
                                   <div className="font-semibold text-gray-800">
-                                    {item.product_name || item.product_id}
+                                    {item.product_name
+                                      ? item.product_name
+                                      : item.product_id
+                                        ? `Ürün ID: ${item.product_id}`
+                                        : 'Ürün bilgisi yok'}
                                   </div>
                                   <div className="text-gray-600 text-xs">
                                     Miktar: <span className="font-medium">{item.quantity || '-'}</span> {item.unit_type || item.unit || ''}

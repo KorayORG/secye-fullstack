@@ -116,8 +116,14 @@ const StorefrontManagement = ({ companyId, userRole }) => {
 
   const loadStats = async () => {
     try {
+      // API'ye gönderilecek period parametresini backend ile uyumlu hale getir
+      let backendPeriod = statsPeriod;
+      if (statsPeriod === 'month') backendPeriod = '1_month';
+      if (statsPeriod === 'week') backendPeriod = '1_week';
+      if (statsPeriod === 'day') backendPeriod = '1_day';
+      if (statsPeriod === 'year') backendPeriod = '1_year';
       const response = await axios.get(`${API}/supplier/${companyId}/stats`, {
-        params: { period: statsPeriod }
+        params: { period: backendPeriod }
       });
       setStats(response.data);
     } catch (err) {
@@ -1015,7 +1021,7 @@ const StorefrontManagement = ({ companyId, userRole }) => {
                           ₺{order.total_amount?.toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {order.items?.length || 0} farklı ürün
+                          Durum: {getStatusLabel(order.status)}
                         </p>
                         {order.delivery_address && (
                           <p className="text-xs text-gray-400 mt-1 flex items-center justify-end">

@@ -757,7 +757,14 @@ const SupplierManagement = ({ companyId, userRole }) => {
                     <span className="font-medium">Toplam Tutar:</span> ₺{selectedOrder.total_amount?.toFixed(2)}
                   </div>
                   <div>
-                    <span className="font-medium">Durum:</span> {selectedOrder.status}
+                    <span className="font-medium">Durum:</span> {
+                      selectedOrder.status === 'pending' ? 'Beklemede' :
+                      selectedOrder.status === 'confirmed' ? 'Onaylandı' :
+                      selectedOrder.status === 'preparing' ? 'Hazırlanıyor' :
+                      selectedOrder.status === 'delivered' ? 'Teslim Edildi' :
+                      selectedOrder.status === 'cancelled' ? 'İptal Edildi' :
+                      selectedOrder.status
+                    }
                   </div>
                   <div>
                     <span className="font-medium">Oluşturulma:</span> {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('tr-TR') : ''}
@@ -778,7 +785,7 @@ const SupplierManagement = ({ companyId, userRole }) => {
                       <ul className="list-disc ml-6 mt-1">
                         {selectedOrder.items.map((item, idx) => (
                           <li key={idx} className="text-sm">
-                            {item.product_id} - {item.quantity} x ₺{item.unit_price?.toFixed(2)}
+                            {(item.product_name || item.name || item.product_id)} - {item.quantity} x ₺{item.unit_price?.toFixed(2)}
                           </li>
                         ))}
                       </ul>
