@@ -5574,6 +5574,74 @@ async def get_partnerships(
             detail="Ortaklıklar alınamadı"
         )
 
+# ===== CRYPTO APIs =====
+@api_router.post("/crypto/encrypt")
+async def encrypt_data_endpoint(data: Dict[str, str]):
+    """Encrypt data for client-side usage"""
+    try:
+        from lib.crypto import encrypt_id
+        
+        if "id" not in data:
+            raise HTTPException(status_code=400, detail="ID field is required")
+        
+        encrypted = encrypt_id(data["id"])
+        return {"encrypted": encrypted}
+        
+    except Exception as e:
+        logger.error(f"Encryption error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Şifreleme başarısız"
+        )
+
+@api_router.post("/crypto/decrypt")
+async def decrypt_data_endpoint(data: Dict[str, str]):
+    """Decrypt data for client-side usage"""
+    try:
+        from lib.crypto import decrypt_id
+        
+        if "encrypted" not in data:
+            raise HTTPException(status_code=400, detail="Encrypted field is required")
+        
+        decrypted = decrypt_id(data["encrypted"])
+        return {"decrypted": decrypted}
+        
+    except Exception as e:
+        logger.error(f"Decryption error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Şifre çözme başarısız"
+        )
+
+@api_router.post("/auth/verify-session")
+async def verify_session_endpoint(session_data: Dict[str, str]):
+    """Verify session matches user/company parameters"""
+    try:
+        company_id = session_data.get("companyId")
+        user_id = session_data.get("userId")
+        
+        if not company_id or not user_id:
+            return {"valid": False}
+        
+        # Verify user exists and has access to company
+        user = await db.users.find_one({"id": user_id, "is_active": True})
+        if not user:
+            return {"valid": False}
+        
+        # Check company membership
+        user_company_ids = user.get('company_ids', [])
+        if company_id not in user_company_ids:
+            # Also check role_assignments for backward compatibility
+            roles = await get_user_roles_cached(user_id, company_id)
+            if not roles:
+                return {"valid": False}
+        
+        return {"valid": True}
+        
+    except Exception as e:
+        logger.error(f"Session verification error: {e}")
+        return {"valid": False}
+
 # ===== INDIVIDUAL USER APIs =====
 @api_router.get("/individual/{company_id}/{user_id}/dashboard")
 async def get_individual_dashboard(company_id: str, user_id: str):
