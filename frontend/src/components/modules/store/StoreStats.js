@@ -53,11 +53,68 @@ const StoreStats = ({ companyId }) => {
       {loading && <div>Yükleniyor...</div>}
       {error && <div className="text-red-600">{error}</div>}
       {stats && (
-        <div className="space-y-2">
-          <div>Toplam Satış: <b>{stats.total_sales}</b></div>
-          <div>Toplam Gelir: <b>₺{stats.total_revenue}</b></div>
-          <div>En Çok Satılan Ürün: <b>{stats.top_product}</b></div>
-          {/* Diğer detaylı istatistikler buraya eklenebilir */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white p-4 rounded-lg border shadow-sm">
+            <h4 className="text-lg font-semibold text-gray-800 mb-2">Sipariş İstatistikleri</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Toplam Sipariş:</span>
+                <span className="font-semibold">{stats.total_orders || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Teslim Edilenler:</span>
+                <span className="font-semibold text-green-600">{stats.delivered_orders || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Bekleyenler:</span>
+                <span className="font-semibold text-yellow-600">{stats.pending_orders || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border shadow-sm">
+            <h4 className="text-lg font-semibold text-gray-800 mb-2">Finansal Durum</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Toplam Gelir:</span>
+                <span className="font-semibold text-green-600">₺{stats.total_revenue?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ortalama Sipariş:</span>
+                <span className="font-semibold">
+                  ₺{stats.total_orders > 0 ? (stats.total_revenue / stats.total_orders).toFixed(2) : '0.00'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border shadow-sm">
+            <h4 className="text-lg font-semibold text-gray-800 mb-2">Ürün Durumu</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Toplam Ürün:</span>
+                <span className="font-semibold">{stats.total_products || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Düşük Stok:</span>
+                <span className="font-semibold text-red-600">{stats.low_stock_products || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          {stats.low_stock_items && stats.low_stock_items.length > 0 && (
+            <div className="bg-white p-4 rounded-lg border shadow-sm">
+              <h4 className="text-lg font-semibold text-gray-800 mb-2">Düşük Stoklu Ürünler</h4>
+              <div className="space-y-1">
+                {stats.low_stock_items.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <span>{item.name}</span>
+                    <span className="text-red-600">{item.stock_quantity} adet</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
