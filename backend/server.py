@@ -3780,8 +3780,11 @@ async def register_individual(request: RegisterIndividualRequest):
 
 @api_router.post("/auth/login")
 async def login(request: LoginRequest, response: Response):
-    """Unified login endpoint"""
+    """Unified login endpoint with proper tenant membership checking"""
     try:
+        # Import crypto helper
+        from lib.crypto import encrypt_id
+        
         # Find user by phone
         user = await db.users.find_one({"phone": request.phone, "is_active": True})
         if not user:
@@ -3799,49 +3802,67 @@ async def login(request: LoginRequest, response: Response):
                 detail="Telefon numarası veya şifre hatalı"
             )
         
-        # Check if user has role in requested company
+        # Verify company exists and is active
+        company = await db.companies.find_one({
+            "id": request.company_id,
+            "type": request.company_type,
+            "is_active": True
+        })
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Check tenant membership - user must be member of requested company
+        user_company_ids = user.get('company_ids', [])
+        
+        # Check if user is member of this company
+        if request.company_id not in user_company_ids:
+            # Also check role_assignments for backward compatibility
+            roles = await get_user_roles_cached(user['id'], request.company_id)
+            if not roles:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Bu şirket için erişiminiz yok"
+                )
+        
+        # Update last login
+        await db.users.update_one(
+            {"id": user['id']},
+            {"$set": {"last_login_at": datetime.now(timezone.utc)}}
+        )
+        
+        # Check user type and generate appropriate redirect
         roles = await get_user_roles_cached(user['id'], request.company_id)
-        if not roles:
-            # Check if this is individual access to corporate
-            if request.company_type == 'corporate':
-                # Individual users can access corporate companies they belong to
-                company = await db.companies.find_one({
-                    "id": request.company_id,
-                    "type": "corporate",
-                    "is_active": True
-                })
-                if not company:
-                    raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        if roles:
+            # Corporate user with administrative roles
+            highest_role = get_highest_role(roles)
+            if highest_role:
+                # Create encrypted URL segments
+                enc_user_id = encrypt_id(user['id'])
+                enc_company_id = encrypt_id(request.company_id)
                 
-                # For now, allow individual access (we'll implement proper individual checking later)
-                redirect_url = "/app"
+                # Corporate panel routing
+                redirect_url = f"/{enc_company_id}/{enc_user_id}/general"
+                
                 return LoginResponse(
                     success=True,
                     user_id=user['id'],
                     redirect_url=redirect_url,
-                    message="Giriş başarılı - Bireysel panel"
+                    message="Giriş başarılı - Kurumsal panel"
                 )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Bu şirkette yetkiniz bulunmamaktadır"
-                )
-        
-        # Corporate panel access - create signed URL
-        highest_role = get_highest_role(roles)
-        if highest_role:
-            # Create signed path segments
-            enc_user_id = create_signed_path_segment({"user_id": user['id']})
-            enc_company_type = create_signed_path_segment({"company_type": request.company_type})
-            enc_company_id = create_signed_path_segment({"company_id": request.company_id})
+        else:
+            # Individual user access - create encrypted personal URL
+            enc_user_id = encrypt_id(user['id'])
+            enc_company_id = encrypt_id(request.company_id)
             
-            redirect_url = f"/{enc_user_id}/{enc_company_type}/{enc_company_id}/general"
+            # Individual panel routing with encrypted IDs
+            redirect_url = f"/{enc_company_id}/{enc_user_id}/dashboard"
             
             return LoginResponse(
                 success=True,
                 user_id=user['id'],
                 redirect_url=redirect_url,
-                message="Giriş başarılı - Kurumsal panel"
+                message="Giriş başarılı - Bireysel panel"
             )
         
         raise HTTPException(
