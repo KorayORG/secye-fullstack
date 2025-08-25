@@ -12,6 +12,10 @@ import PanelRouter from './components/PanelRouter';
 import ProtectedRoute from './components/ProtectedRoute';
 import IndividualLayout from './components/individual/IndividualLayout';
 import IndividualDashboard from './components/individual/IndividualDashboard';
+import MealSelection from './components/individual/MealSelection';
+import MySelections from './components/individual/MySelections';
+import RequestSuggestion from './components/individual/RequestSuggestion';
+import Profile from './components/individual/Profile';
 
 function App() {
   return (
