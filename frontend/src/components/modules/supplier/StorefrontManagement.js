@@ -114,16 +114,22 @@ const StorefrontManagement = ({ companyId, userRole }) => {
     }
   };
 
+  const periodMap = {
+    'day': '1_day',
+    'week': '1_week',
+    'month': '1_month',
+    'year': '1_year',
+    '1_day': '1_day',
+    '1_week': '1_week',
+    '1_month': '1_month',
+    '1_year': '1_year',
+  };
+
   const loadStats = async () => {
     try {
-      // API'ye gönderilecek period parametresini backend ile uyumlu hale getir
-      let backendPeriod = statsPeriod;
-      if (statsPeriod === 'month') backendPeriod = '1_month';
-      if (statsPeriod === 'week') backendPeriod = '1_week';
-      if (statsPeriod === 'day') backendPeriod = '1_day';
-      if (statsPeriod === 'year') backendPeriod = '1_year';
+      const mappedPeriod = periodMap[statsPeriod] || '1_month';
       const response = await axios.get(`${API}/supplier/${companyId}/stats`, {
-        params: { period: backendPeriod }
+        params: { period: mappedPeriod }
       });
       setStats(response.data);
     } catch (err) {

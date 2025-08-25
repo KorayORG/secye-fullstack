@@ -1552,94 +1552,66 @@ async def get_catering_excel_template(company_id: str):
             detail="Catering Excel şablonu oluşturulamadı"
         )
 
-@api_router.post("/supplier/{company_id}/employees/bulk-import")
-async def bulk_import_supplier_employees(
-    company_id: str,
-    request: BulkImportRequest
-):
-    """Bulk import supplier employees from Excel data"""
+@api_router.get("/supplier/{company_id}/dashboard")
+async def get_supplier_dashboard(company_id: str):
+    """Get supplier dashboard statistics (real data per supplier)"""
     try:
-        # Verify company exists
-        company = await db.companies.find_one({"id": company_id, "type": "supplier", "is_active": True})
+        # Verify company exists and is supplier type
+        company = await db.companies.find_one({
+            "id": company_id,
+            "type": "supplier",
+            "is_active": True
+        })
         if not company:
-            raise HTTPException(status_code=404, detail="Tedarikçi şirketi bulunamadı")
-        
-        imported_users = []
-        failed_users = []
-        passwords = []
-        
-        for user_data in request.users:
-            try:
-                # Check if phone already exists
-                existing_user = await db.users.find_one({"phone": user_data["phone"]})
-                if existing_user:
-                    failed_users.append({
-                        "full_name": user_data["full_name"],
-                        "phone": user_data["phone"],
-                        "error": "Telefon numarası zaten kayıtlı"
-                    })
-                    continue
-                
-                # Generate password
-                password = generate_4_digit_password()
-                password_hash = ph.hash(password)
-                
-                # Create user
-                user = {
-                    "id": str(uuid.uuid4()),
-                    "full_name": user_data["full_name"],
-                    "phone": user_data["phone"],
-                    "email": create_email_address(user_data["full_name"], company["slug"]),
-                    "password_hash": password_hash,
-                    "is_active": True,
-                    "created_at": datetime.now(timezone.utc),
-                    "updated_at": datetime.now(timezone.utc)
-                }
-                
-                await db.users.insert_one(user)
-                
-                imported_users.append(user)
-                passwords.append({
-                    "full_name": user_data["full_name"],
-                    "phone": user_data["phone"], 
-                    "password": password
-                })
-                
-            except Exception as e:
-                failed_users.append({
-                    "full_name": user_data.get("full_name", ""),
-                    "phone": user_data.get("phone", ""),
-                    "error": str(e)
-                })
-        
-        # Log the action
-        audit_log = {
-            "id": str(uuid.uuid4()),
-            "type": "BULK_IMPORT",
-            "company_id": company_id,
-            "meta": {
-                "imported_count": len(imported_users),
-                "failed_count": len(failed_users)
-            },
-            "created_at": datetime.now(timezone.utc)
-        }
-        await db.audit_logs.insert_one(audit_log)
-        
-        return BulkImportResponse(
-            success=True,
-            imported_count=len(imported_users),
-            failed_count=len(failed_users),
-            failed_users=failed_users,
-            download_url=None
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+
+        # Count orders (all time)
+        total_orders = await db.orders.count_documents({"supplier_id": company_id})
+
+        # Count products (variety)
+        product_variety = await db.products.count_documents({"supplier_id": company_id, "is_active": True})
+
+        # Count recent orders (last 30 days)
+        recent_date = datetime.now(timezone.utc) - timedelta(days=30)
+        recent_orders = await db.orders.count_documents({
+            "supplier_id": company_id,
+            "created_at": {"$gte": recent_date}
+        })
+
+        # Count partner caterings (number of unique catering_ids in orders)
+        partner_caterings = len(
+            await db.orders.distinct("catering_id", {"supplier_id": company_id})
         )
-        
+
+        # Get recent activities from audit logs
+        recent_logs = await db.audit_logs.find({
+            "company_id": company_id
+        }).sort("created_at", -1).limit(10).to_list(None)
+
+        recent_activities = []
+        for log in recent_logs:
+            recent_activities.append({
+                "type": log["type"],
+                "description": get_activity_description(log),
+                "timestamp": log["created_at"].isoformat(),
+                "meta": log.get("meta", {})
+            })
+
+        return SupplierDashboardStats(
+            total_orders=total_orders,
+            product_variety=product_variety,
+            recent_orders=recent_orders,
+            partner_caterings=partner_caterings,
+            recent_activities=recent_activities
+        )
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Supplier bulk import error: {e}")
+        logger.error(f"Supplier dashboard error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Tedarikçi toplu içe aktarma başarısız"
+            detail="Dashboard verileri alınamadı"
         )
 
 @api_router.get("/supplier/{company_id}/employees/excel-template")

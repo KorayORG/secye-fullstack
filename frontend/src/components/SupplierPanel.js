@@ -40,6 +40,9 @@ const SupplierPanel = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
+  // İstatistikler için StorefrontManagement içinden stats alınacak
+  const [stats, setStats] = useState(null);
+
   // Decode path segments (simplified - in real implementation would verify HMAC)
   const decodePathSegment = (encoded) => {
     try {
@@ -168,6 +171,10 @@ const SupplierPanel = () => {
     }
   };
 
+  // StorefrontManagement'tan stats bilgisini almak için callback
+  const handleStatsUpdate = (newStats) => {
+    setStats(newStats);
+  };
 
   const logout = () => {
     navigate('/login');
@@ -274,12 +281,12 @@ const SupplierPanel = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Toplam Sipariş</CardTitle>
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-medium">Son 30 Gün</CardTitle>
+                      <Truck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{dashboardStats.total_orders}</div>
-                      <p className="text-xs text-muted-foreground">Satır adedi</p>
+                      <div className="text-2xl font-bold">{stats?.total_orders ?? 0}</div>
+                      <p className="text-xs text-muted-foreground">Yeni sipariş</p>
                     </CardContent>
                   </Card>
 
@@ -289,30 +296,19 @@ const SupplierPanel = () => {
                       <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{dashboardStats.product_variety}</div>
+                      <div className="text-2xl font-bold">{stats?.total_products ?? 0}</div>
                       <p className="text-xs text-muted-foreground">Stok çeşit sayısı</p>
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Son 30 Gün</CardTitle>
-                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-medium">Toplam Sipariş</CardTitle>
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{dashboardStats.recent_orders}</div>
-                      <p className="text-xs text-muted-foreground">Yeni sipariş</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Partner Catering</CardTitle>
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{dashboardStats.partner_caterings}</div>
-                      <p className="text-xs text-muted-foreground">Müşteri sayısı</p>
+                      <div className="text-2xl font-bold">{dashboardStats.total_orders}</div>
+                      <p className="text-xs text-muted-foreground">Satır adedi</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -382,7 +378,7 @@ const SupplierPanel = () => {
 
           {/* Store Management Tab */}
           <TabsContent value="store">
-            <StorefrontManagement companyId={getCompanyIdFromPath()} />
+            <StorefrontManagement companyId={getCompanyIdFromPath()} userRole={userProfile?.role} onStatsUpdate={handleStatsUpdate} />
           </TabsContent>
 
           {/* Supplier Orders Tab */}
