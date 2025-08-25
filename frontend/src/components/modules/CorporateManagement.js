@@ -198,10 +198,10 @@ const CorporateManagement = ({ companyId, userRole }) => {
     }
   };
 
+  // Gerçek çalışan sayısı: bireysel kullanıcı sayısı
   const getEmployeeCount = (company) => {
-    // This would normally come from the company data
-    // For now, we'll use a placeholder or random number
-    return company.employee_count || Math.floor(Math.random() * 200) + 50;
+    // Backend'den gelen individual_users alanını kullan
+    return company.individual_users ?? company.employee_count ?? 0;
   };
 
   const handleOpenTerminationDialog = (company) => {
@@ -248,11 +248,10 @@ const CorporateManagement = ({ companyId, userRole }) => {
     }
   };
 
+  // Günlük ortalama: aktif bireysel kullanıcı sayısı
   const getDailyMealAverage = (company) => {
-    // This would be calculated from actual meal orders
-    // For now, we'll estimate based on employee count
-    const employeeCount = getEmployeeCount(company);
-    return Math.floor(employeeCount * 0.8); // Assume 80% participation rate
+    // Backend'den gelen aktif bireysel kullanıcı sayısı
+    return company.active_individual_users ?? 0;
   };
 
   // Filtered data based on active tab and search

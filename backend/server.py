@@ -857,35 +857,26 @@ async def get_corporate_dashboard(company_id: str):
         if not company:
             raise HTTPException(status_code=404, detail="Şirket bulunamadı")
         
-        # Count individual users (users without corporate roles in this company)
-        all_roles = await db.role_assignments.find({
-            "company_id": company_id,
-            "is_active": True
-        }).to_list(None)
-        
-        corporate_user_ids = set()
-        for role in all_roles:
-            if role['role'].startswith('corporate') and not role['role'].endswith('1'):
-                corporate_user_ids.add(role['user_id'])
-        
-        # Count corporate users (users with corporate management roles)
-        corporate_users = len(corporate_user_ids)
-        
-        # Count individual users (estimate - we'll improve this with proper individual user tracking)
-        total_users = await db.users.count_documents({"is_active": True})
-        individual_users = max(0, total_users - corporate_users)
-        
+        # Tüm kullanıcıları çek (şirkete bağlı)
+        users = await db.users.find({"company_id": company_id}).to_list(None)
+        # Bireysel kullanıcılar
+        individual_users = [u for u in users if u.get("type") == "individual"]
+        # Aktif bireysel kullanıcılar
+        active_individual_users = [u for u in individual_users if u.get("is_active")]
+        # Kurumsal kullanıcılar
+        corporate_users = [u for u in users if u.get("type") == "corporate"]
+
         # Count total preferences (we'll add this when we implement menu selection)
         total_preferences = 0  # Placeholder for now
-        
+
         # Count active shifts
         active_shifts = await db.shifts.count_documents({"company_id": company_id}) if 'shifts' in await db.list_collection_names() else 0
-        
+
         # Get recent activities from audit logs
         recent_logs = await db.audit_logs.find({
             "company_id": company_id
         }).sort("created_at", -1).limit(10).to_list(None)
-        
+
         recent_activities = []
         for log in recent_logs:
             recent_activities.append({
@@ -894,13 +885,15 @@ async def get_corporate_dashboard(company_id: str):
                 "timestamp": log["created_at"].isoformat(),
                 "meta": log.get("meta", {})
             })
-        
+
         return CorporateDashboardStats(
-            individual_users=individual_users,
-            corporate_users=corporate_users,
+            individual_users=len(individual_users),
+            corporate_users=len(corporate_users),
             total_preferences=total_preferences,
             active_shifts=active_shifts,
-            recent_activities=recent_activities
+            recent_activities=recent_activities,
+            # Ekstra: aktif bireysel kullanıcı sayısı
+            active_individual_users=len(active_individual_users)
         )
         
     except HTTPException:
@@ -928,18 +921,21 @@ async def get_catering_dashboard(company_id: str):
         # Get rating from company data
         rating = company.get("ratings", {}).get("avg", 0.0)
         
-        # Count served individuals (estimate based on partner corporates)
-        partner_corporates = 0  # We'll implement this when we add catering-corporate relationships
-        served_individuals = 0  # Placeholder
-        
+        # Tüm kullanıcıları çek (şirkete bağlı)
+        users = await db.users.find({"company_id": company_id}).to_list(None)
+        # Bireysel kullanıcılar
+        individual_users = [u for u in users if u.get("type") == "individual"]
+        # Aktif bireysel kullanıcılar
+        active_individual_users = [u for u in individual_users if u.get("is_active")]
+
         # Count total preferences
         total_preferences = 0  # Placeholder
-        
+
         # Get recent activities
         recent_logs = await db.audit_logs.find({
             "company_id": company_id
         }).sort("created_at", -1).limit(10).to_list(None)
-        
+
         recent_activities = []
         for log in recent_logs:
             recent_activities.append({
@@ -948,13 +944,15 @@ async def get_catering_dashboard(company_id: str):
                 "timestamp": log["created_at"].isoformat(),
                 "meta": log.get("meta", {})
             })
-        
+
         return CateringDashboardStats(
             rating=rating,
-            served_individuals=served_individuals,
+            served_individuals=len(individual_users),  # Çalışan sayısı
             total_preferences=total_preferences,
-            partner_corporates=partner_corporates,
-            recent_activities=recent_activities
+            partner_corporates=0,  # İleride eklenecek
+            recent_activities=recent_activities,
+            # Ekstra: aktif bireysel kullanıcı sayısı
+            active_individual_users=len(active_individual_users)
         )
         
     except HTTPException:
@@ -1032,42 +1030,70 @@ async def get_supplier_dashboard(company_id: str):
 
 @api_router.get("/user/profile")
 async def get_user_profile(user_id: str, company_id: str):
-    """Get user profile with company and role information"""
+    """Get user profile with company and role information (hem kurumsal hem bireysel mantık)"""
     try:
-        # Get user
         user = await db.users.find_one({"id": user_id, "is_active": True})
         if not user:
             raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-        
-        # Get company
-        company = await db.companies.find_one({"id": company_id, "is_active": True})
-        if not company:
-            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
-        
-        # Get user role in this company
-        role_assignment = await db.role_assignments.find_one({
+
+        # type ve company_id zorunlu
+        if "type" not in user or "company_id" not in user:
+            raise HTTPException(status_code=400, detail="Kullanıcı kaydında type ve company_id zorunlu.")
+
+        # Kullanıcının şirketteki tüm rolleri (kurumsal ve bireysel)
+        roles = await db.role_assignments.find({
             "user_id": user_id,
             "company_id": company_id,
             "is_active": True
-        })
-        
-        user_role = role_assignment['role'] if role_assignment else 'individual'
-        
-        return UserProfile(
-            id=user["id"],
-            full_name=user["full_name"],
-            phone=user["phone"],
-            email=user.get("email"),
-            company={
-                "id": company["id"],
-                "name": company["name"],
-                "type": company["type"],
-                "slug": company["slug"]
-            },
-            role=user_role,
-            is_active=user["is_active"]
-        )
-        
+        }).to_list(None)
+
+        # Şirketi bul
+        company = await db.companies.find_one({"id": company_id, "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+
+        # Kurumsal rol kontrolü
+        has_corporate = any(r["role"].startswith("corporate") for r in roles)
+
+        # Kurumsal kullanıcı ise veya hem kurumsal hem bireysel ise bireysel panele yönlendir
+        if has_corporate or user["type"] == "individual":
+            return {
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"],
+                "email": user.get("email"),
+                "company": {
+                    "id": company["id"],
+                    "name": company["name"],
+                    "type": company["type"],
+                    "slug": company["slug"]
+                },
+                "roles": [r["role"] for r in roles] + (["individual"] if has_corporate else []),
+                "is_active": user["is_active"],
+                "redirect_url": f"/" + str(company["id"]) + "/" + str(user["id"]) + "/dashboard"
+            }
+
+        # Sadece bireysel hesabı varsa, sadece bireysel panele yönlendir
+        if user["type"] == "individual":
+            return {
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"],
+                "email": user.get("email"),
+                "company": {
+                    "id": company["id"],
+                    "name": company["name"],
+                    "type": company["type"],
+                    "slug": company["slug"]
+                },
+                "roles": ["individual"],
+                "is_active": user["is_active"],
+                "redirect_url": f"/" + str(company["id"]) + "/" + str(user["id"]) + "/dashboard"
+            }
+
+        # Diğer durumlarda erişim engellensin
+        raise HTTPException(status_code=403, detail="Erişim izniniz yok.")
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1076,160 +1102,70 @@ async def get_user_profile(user_id: str, company_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Kullanıcı profili alınamadı"
         )
-
-# ===== EMPLOYEE MANAGEMENT APIs =====
-@api_router.get("/corporate/{company_id}/employees")
-async def get_corporate_employees(
-    company_id: str,
-    type: UserType = None,
-    status: str = None,
-    search: str = "",
-    limit: int = 50,
-    offset: int = 0
-):
-    """Get corporate employees with filtering - ONLY users associated with this company"""
-    try:
-        # Verify company exists
-        company = await db.companies.find_one({"id": company_id, "is_active": True})
-        if not company:
-            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
-        
-        # CRITICAL FIX: First get ALL users who have ANY relationship with this company
-        all_company_roles = await db.role_assignments.find({
-            "company_id": company_id
-        }).to_list(None)
-        
-        company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
-        
-        if not company_user_ids:
-            return EmployeeListResponse(users=[], total=0, has_more=False)
-        
         # Build filter query - MUST restrict to company users only
         filter_query = {"id": {"$in": company_user_ids}}
         
         if type == "corporate":
-            # Get users with corporate roles in THIS company
-            corporate_roles = await db.role_assignments.find({
-                "company_id": company_id,
-                "role": {"$regex": "^corporate"},
-                "is_active": True
-            }).to_list(None)
-            
-            corporate_user_ids = [role["user_id"] for role in corporate_roles]
-            filter_query["id"] = {"$in": corporate_user_ids}
-        elif type == "individual":
-            # Get users without corporate roles in THIS company
-            corporate_roles = await db.role_assignments.find({
-                "company_id": company_id,
-                "role": {"$regex": "^corporate"}
-            }).to_list(None)
-            
-            corporate_user_ids = [role["user_id"] for role in corporate_roles]
-            # Still restrict to company users, but exclude those with corporate roles
-            individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
-            filter_query["id"] = {"$in": individual_user_ids}
-        
-        if status:
-            filter_query["is_active"] = status == "active"
-        
-        if search:
-            search_conditions = [
-                {"full_name": {"$regex": search, "$options": "i"}},
-                {"phone": {"$regex": search, "$options": "i"}},
-                {"email": {"$regex": search, "$options": "i"}}
-            ]
-            # Combine search with company restriction
-            filter_query = {"$and": [{"id": {"$in": filter_query["id"]["$in"]}}, {"$or": search_conditions}]}
-            if status:
-                filter_query["$and"].append({"is_active": status == "active"})
-        
-        # Get users
-        users = await db.users.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
-        
-        has_more = len(users) > limit
-        if has_more:
-            users = users[:-1]
-        
-        # Get role information for each user
-        result_users = []
-        for user in users:
-            user_role = await db.role_assignments.find_one({
-                "user_id": user["id"],
-                "company_id": company_id,
-                "is_active": True
-            })
-            
-            result_users.append({
-                "id": user["id"],
-                "full_name": user["full_name"],
-                "phone": user["phone"],
-                "email": user.get("email"),
-                "role": user_role["role"] if user_role else "individual",
-                "is_active": user["is_active"],
-                "created_at": user["created_at"].isoformat(),
-                "last_login_at": user.get("last_login_at").isoformat() if user.get("last_login_at") else None
-            })
-        
-        return EmployeeListResponse(
-            users=result_users,
-            total=len(result_users),
-            has_more=has_more
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Get employees error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Çalışanlar alınamadı"
-        )
+            @api_router.get("/user/profile")
+            async def get_user_profile(user_id: str, company_id: str):
+                """Get user profile with company and role information (hem kurumsal hem bireysel mantık)"""
+                try:
+                    user = await db.users.find_one({"id": user_id, "is_active": True})
+                    if not user:
+                        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-@api_router.put("/corporate/{company_id}/employees/{user_id}")
-async def update_employee(
-    company_id: str,
-    user_id: str,
-    request: EmployeeUpdateRequest
-):
-    """Update employee details"""
-    try:
-        # Verify user exists
-        user = await db.users.find_one({"id": user_id})
-        if not user:
-            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-        
-        # Prepare update data
-        update_data = {"updated_at": datetime.now(timezone.utc)}
-        
-        if request.full_name is not None:
-            update_data["full_name"] = request.full_name
-        
-        if request.email is not None:
-            update_data["email"] = request.email
-        
-        if request.is_active is not None:
-            update_data["is_active"] = request.is_active
-        
-        # Update user
-        await db.users.update_one(
-            {"id": user_id},
-            {"$set": update_data}
-        )
-        
-        # Log the action
-        audit_log = {
-            "id": str(uuid.uuid4()),
-            "type": "USER_UPDATED",
-            "company_id": company_id,
-            "user_id": user_id,
-            "meta": {
-                "changes": {k: v for k, v in update_data.items() if k != "updated_at"}
-            },
-            "created_at": datetime.now(timezone.utc)
-        }
-        await db.audit_logs.insert_one(audit_log)
-        
-        return {"success": True, "message": "Kullanıcı bilgileri güncellendi"}
+                    # Önce role_assignments var mı bak
+                    roles = await db.role_assignments.find({
+                        "user_id": user_id,
+                        "company_id": company_id,
+                        "is_active": True
+                    }).to_list(None)
+
+                    # Şirketi bulma mantığı: role_assignments varsa company_id ile, yoksa bireysel ise user.company_id ile
+                    company = await db.companies.find_one({"id": company_id, "is_active": True})
+                    if not company and user.get("type") == "individual" and user.get("company_id") == company_id:
+                        company = await db.companies.find_one({"id": user.get("company_id"), "is_active": True})
+                    if not company:
+                        raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+
+                    result = {
+                        "id": user["id"],
+                        "full_name": user["full_name"],
+                        "phone": user["phone"],
+                        "email": user.get("email"),
+                        "company": {
+                            "id": company["id"],
+                            "name": company["name"],
+                            "type": company["type"],
+                            "slug": company["slug"]
+                        },
+                        "roles": [],
+                        "is_active": user["is_active"]
+                    }
+
+                    # Kurumsal roller ekle
+                    for r in roles:
+                        result["roles"].append(r["role"])
+
+                    # Bireysel rolü ekle: kullanıcı tipi individual ve company_id eşleşiyorsa
+                    if user.get("type") == "individual" and user.get("company_id") == company_id:
+                        if "individual" not in result["roles"]:
+                            result["roles"].append("individual")
+
+                    # Eğer hiç rol yoksa ve bireysel kullanıcıysa, sadece bireysel olarak döndür
+                    if not result["roles"] and user.get("type") == "individual" and user.get("company_id") == company_id:
+                        result["roles"] = ["individual"]
+
+                    return result
+
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    logger.error(f"User profile error: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Kullanıcı profili alınamadı"
+                    )
         
     except HTTPException:
         raise
@@ -3758,14 +3694,15 @@ async def register_individual(request: RegisterIndividualRequest):
         password_hash = ph.hash(request.password)
         
         # Create user
-        user = User(
-            full_name=request.full_name,
-            phone=request.phone,
-            password_hash=password_hash
-        )
-        
-        await db.users.insert_one(user.dict())
-        
+        user_data = {
+            "full_name": request.full_name,
+            "phone": request.phone,
+            "password_hash": password_hash,
+            "type": "individual",
+            "company_id": request.company_id,
+            "is_active": True
+        }
+        await db.users.insert_one(user_data)
         return {"success": True, "message": "Kayıt başarılı"}
         
     except HTTPException:
@@ -3813,7 +3750,7 @@ async def login(request: LoginRequest, response: Response):
                     raise HTTPException(status_code=404, detail="Şirket bulunamadı")
                 
                 # For now, allow individual access (we'll implement proper individual checking later)
-                redirect_url = "/app/home"
+                redirect_url = "/app"
                 return LoginResponse(
                     success=True,
                     user_id=user['id'],
