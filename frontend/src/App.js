@@ -76,11 +76,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <IndividualLayout>
-                  {/* TODO: Create Profile component */}
-                  <div className="p-8 text-center">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-4">Hesabım</h2>
-                    <p className="text-gray-600">Bu sayfa yakında tamamlanacak...</p>
-                  </div>
+                  <Profile />
                 </IndividualLayout>
               </ProtectedRoute>
             } 
