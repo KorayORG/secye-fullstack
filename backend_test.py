@@ -2868,8 +2868,8 @@ class SecYeAPITester:
         return approved_count > 0
 
 def main():
-    """Main function to run focused Supplier Product Management API tests"""
-    print("🚀 Starting Supplier Product Management API Testing")
+    """Main function to run focused Supplier Dashboard API tests"""
+    print("🚀 Starting Supplier Dashboard API Testing")
     print("=" * 70)
     
     tester = SecYeAPITester()
@@ -2890,18 +2890,25 @@ def main():
         print("❌ No supplier companies found. Cannot proceed with supplier tests.")
         return False
     
-    # Get catering companies
+    # Get catering companies (needed for test data creation)
     catering_success, _ = tester.test_company_search("catering", "")
     if not catering_success or not tester.catering_company_id:
-        print("❌ No catering companies found. Cannot proceed with shopping API tests.")
-        return False
+        print("⚠️  No catering companies found. Some tests may be limited.")
+    
+    # Get corporate companies (needed for validation tests)
+    corporate_success, _ = tester.test_company_search("corporate", "")
+    if not corporate_success or not tester.corporate_company_id:
+        print("⚠️  No corporate companies found. Some validation tests may be skipped.")
     
     print(f"✅ Found Supplier Company: {tester.supplier_company_id}")
-    print(f"✅ Found Catering Company: {tester.catering_company_id}")
+    if tester.catering_company_id:
+        print(f"✅ Found Catering Company: {tester.catering_company_id}")
+    if tester.corporate_company_id:
+        print(f"✅ Found Corporate Company: {tester.corporate_company_id}")
     
-    # Step 3: Run focused supplier product management tests
-    print("\n📋 Step 3: Running Focused Supplier Product Management Tests")
-    supplier_success = tester.test_supplier_product_management_apis_focused()
+    # Step 3: Run focused supplier dashboard API tests
+    print("\n📋 Step 3: Running Focused Supplier Dashboard API Tests")
+    dashboard_success = tester.test_supplier_dashboard_api_focused()
     
     # Final Results
     print("\n" + "=" * 70)
@@ -2912,14 +2919,17 @@ def main():
     print(f"Tests Passed: {tester.tests_passed}")
     print(f"Success Rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
-    if supplier_success:
-        print("\n🎉 SUPPLIER PRODUCT MANAGEMENT APIs: ✅ WORKING")
-        print("   All critical supplier product management functionality is operational")
+    if dashboard_success:
+        print("\n🎉 SUPPLIER DASHBOARD API: ✅ WORKING")
+        print("   ✅ API endpoint GET /api/supplier/{company_id}/dashboard is operational")
+        print("   ✅ Returns correct SupplierDashboardStats model structure")
+        print("   ✅ Data sources are using real collections (orders, products, audit_logs)")
+        print("   ✅ All validation and error handling working correctly")
     else:
-        print("\n❌ SUPPLIER PRODUCT MANAGEMENT APIs: ❌ ISSUES FOUND")
-        print("   Critical issues detected in supplier product management system")
+        print("\n❌ SUPPLIER DASHBOARD API: ❌ ISSUES FOUND")
+        print("   Critical issues detected in supplier dashboard implementation")
     
-    return supplier_success
+    return dashboard_success
 
 if __name__ == "__main__":
     success = main()
