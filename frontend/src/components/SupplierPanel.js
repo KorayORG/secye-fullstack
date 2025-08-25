@@ -403,48 +403,65 @@ const SupplierPanel = () => {
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="py-2 px-3 text-left text-sm font-semibold">Alıcı</th>
-                      <th className="py-2 px-3 text-left text-sm font-semibold">Ürünler</th>
-                      <th className="py-2 px-3 text-left text-sm font-semibold">Adet</th>
-                      <th className="py-2 px-3 text-left text-sm font-semibold">Birim</th>
-                      <th className="py-2 px-3 text-left text-sm font-semibold">Fiyat</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Ürün Detayları</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Toplam Tutar</th>
                       <th className="py-2 px-3 text-left text-sm font-semibold">Durum</th>
-                      <th className="py-2 px-3 text-left text-sm font-semibold">Güncelle</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">İşlemler</th>
                     </tr>
                   </thead>
                   <tbody>
                     {supplierOrders.map(order => (
                       <tr key={order.id} className="border-b">
-                        <td className="py-2 px-3">{order.buyer_company_name || order.catering_id}</td>
                         <td className="py-2 px-3">
-                          <ul className="list-disc ml-4">
-                            {order.items && order.items.length > 0 ? (
-                              order.items.map((item, idx) => (
-                                <li key={idx} className="mb-1">
-                                  <span className="font-semibold">{item.product_name || item.product_id}</span>
-                                  {" | "}
-                                  <span>Miktar: {item.quantity || '-'}</span>
-                                  {" | "}
-                                  <span>Birim: {item.unit_type || item.unit || '-'}</span>
-                                  {" | "}
-                                  <span>Birim Fiyat: ₺{item.unit_price ? Number(item.unit_price).toFixed(2) : '-'}</span>
-                                </li>
-                              ))
-                            ) : (
-                              <li>-</li>
-                            )}
-                          </ul>
+                          <div className="font-medium">{order.buyer_company_name || order.catering_id}</div>
                         </td>
                         <td className="py-2 px-3">
-                          {order.items && order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                          {order.items && order.items.length > 0 ? (
+                            <div className="space-y-2">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="bg-gray-50 p-2 rounded text-sm">
+                                  <div className="font-semibold text-gray-800">
+                                    {item.product_name || item.product_id}
+                                  </div>
+                                  <div className="text-gray-600 text-xs">
+                                    Miktar: <span className="font-medium">{item.quantity || '-'}</span> {item.unit_type || item.unit || ''}
+                                  </div>
+                                  <div className="text-gray-600 text-xs">
+                                    Birim Fiyat: <span className="font-medium">₺{item.unit_price ? Number(item.unit_price).toFixed(2) : '-'}</span>
+                                  </div>
+                                  <div className="text-gray-600 text-xs">
+                                    Toplam: <span className="font-medium">₺{item.total_price ? Number(item.total_price).toFixed(2) : (item.quantity * item.unit_price).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">Ürün bilgisi yok</span>
+                          )}
                         </td>
                         <td className="py-2 px-3">
-                          {order.items && order.items[0]?.unit_type || '-'}
+                          <div className="font-semibold text-green-600">₺{order.total_amount?.toFixed(2)}</div>
                         </td>
-                        <td className="py-2 px-3">₺{order.total_amount?.toFixed(2)}</td>
-                        <td className="py-2 px-3">{order.status}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'preparing' ? 'bg-orange-100 text-orange-800' :
+                            order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                            order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status === 'pending' ? 'Beklemede' :
+                             order.status === 'confirmed' ? 'Onaylandı' :
+                             order.status === 'preparing' ? 'Hazırlanıyor' :
+                             order.status === 'delivered' ? 'Teslim Edildi' :
+                             order.status === 'cancelled' ? 'İptal Edildi' :
+                             order.status}
+                          </span>
+                        </td>
                         <td className="py-2 px-3">
                           <select
-                            className="border rounded px-2 py-1 text-sm"
+                            className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             value={order.status}
                             disabled={orderStatusUpdating[order.id]}
                             onChange={e => handleOrderStatusChange(order.id, e.target.value)}
