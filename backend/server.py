@@ -1103,10 +1103,143 @@ async def get_user_profile(user_id: str, company_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Kullanıcı profili alınamadı"
         )
+
+@api_router.get("/corporate/{company_id}/employees")
+async def get_corporate_employees(
+    company_id: str,
+    type: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(50),
+    offset: int = Query(0)
+):
+    """Get corporate employees with filtering"""
+    try:
+        # Verify company exists
+        company = await db.companies.find_one({"id": company_id, "type": "corporate", "is_active": True})
+        if not company:
+            raise HTTPException(status_code=404, detail="Şirket bulunamadı")
+        
+        # Get all role assignments for this company to find company users
+        all_company_roles = await db.role_assignments.find({
+            "company_id": company_id
+        }).to_list(None)
+        
+        company_user_ids = list(set([role["user_id"] for role in all_company_roles]))
+        
+        if not company_user_ids:
+            return EmployeeListResponse(users=[], total=0, has_more=False)
+        
         # Build filter query - MUST restrict to company users only
         filter_query = {"id": {"$in": company_user_ids}}
         
         if type == "corporate":
+            # Get users with corporate roles in THIS company
+            corporate_roles = await db.role_assignments.find({
+                "company_id": company_id,
+                "role": {"$regex": "^corporate"}
+            }).to_list(None)
+            
+            corporate_user_ids = [role["user_id"] for role in corporate_roles]
+            individual_user_ids = [uid for uid in company_user_ids if uid not in corporate_user_ids]
+            filter_query["id"] = {"$in": individual_user_ids}
+        
+        if status:
+            filter_query["is_active"] = status == "active"
+        
+        # Get users with pagination
+        users = await db.users.find(filter_query).skip(offset).limit(limit + 1).to_list(None)
+        
+        has_more = len(users) > limit
+        if has_more:
+            users = users[:-1]
+        
+        # Get role information for each user
+        result_users = []
+        for user in users:
+            user_roles = await db.role_assignments.find({
+                "user_id": user["id"],
+                "company_id": company_id,
+                "is_active": True
+            }).to_list(None)
+            
+            result_users.append({
+                "id": user["id"],
+                "full_name": user["full_name"],
+                "phone": user["phone"],
+                "email": user.get("email"),
+                "is_active": user["is_active"],
+                "roles": [role["role"] for role in user_roles],
+                "created_at": user["created_at"].isoformat()
+            })
+        
+        return EmployeeListResponse(
+            users=result_users,
+            total=len(result_users),
+            has_more=has_more
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get employees error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Çalışanlar alınamadı"
+        )
+
+@api_router.put("/corporate/{company_id}/employees/{user_id}")
+async def update_corporate_employee(
+    company_id: str,
+    user_id: str,
+    request: EmployeeUpdateRequest
+):
+    """Update corporate employee"""
+    try:
+        # Verify user exists
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Prepare update data
+        update_data = {"updated_at": datetime.now(timezone.utc)}
+        
+        if request.full_name is not None:
+            update_data["full_name"] = request.full_name
+        
+        if request.email is not None:
+            update_data["email"] = request.email
+        
+        if request.is_active is not None:
+            update_data["is_active"] = request.is_active
+        
+        # Update user
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": update_data}
+        )
+        
+        # Log the action
+        audit_log = {
+            "id": str(uuid.uuid4()),
+            "type": "USER_UPDATED",
+            "company_id": company_id,
+            "user_id": user_id,
+            "meta": update_data,
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.audit_logs.insert_one(audit_log)
+        
+        return {"success": True, "message": "Kullanıcı güncellendi"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update employee error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Kullanıcı güncellenemedi"
+        )
+
             @api_router.get("/user/profile")
             async def get_user_profile(user_id: str, company_id: str):
                 """Get user profile with company and role information (hem kurumsal hem bireysel mantık)"""
