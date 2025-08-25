@@ -241,6 +241,7 @@ class User(BaseModel):
     phone: str  # E.164 format
     email: Optional[str] = None
     password_hash: str
+    company_ids: Optional[List[str]] = Field(default_factory=list)  # Tenant membership array
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
