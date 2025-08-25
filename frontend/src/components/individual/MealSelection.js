@@ -48,29 +48,41 @@ const MealSelection = () => {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [selections, setSelections] = useState({});
 
-  // Dummy veri - gerçekte API'den gelecek
-  const shifts = [
-    { id: 'shift-1', name: '08:00 - 17:00', time: '08:00-17:00', users: 45 },
-    { id: 'shift-2', name: '17:00 - 02:00', time: '17:00-02:00', users: 32 },
-    { id: 'shift-3', name: '02:00 - 11:00', time: '02:00-11:00', users: 28 }
-  ];
+  // API'den gelecek veriler
+  const [shifts, setShifts] = useState([]);
+  const [menuOptions, setMenuOptions] = useState({});
+  const [loading, setLoading] = useState(false);
+  // API'den vardiya ve menü verilerini çek
+  useEffect(() => {
+    const fetchShiftsAndMenus = async () => {
+      setLoading(true);
+      try {
+        // Vardiya listesi
+        const shiftRes = await fetch(`/api/individual/${companyId}/${userId}/shifts`);
+        const shiftData = await shiftRes.json();
+        setShifts(shiftData.shifts || []);
 
-  const menuOptions = {
-    'GELENEKSEL': {
-      name: 'Geleneksel Menü',
-      description: 'Ev yemekleri tarzı, geleneksel lezzetler',
-      items: ['Mercimek Çorbası', 'Etli Kuru Fasulye', 'Pilav', 'Ayran', 'Muhallebi'],
-      image: '🍲',
-      popularity: 68
-    },
-    'ALTERNATIF': {
-      name: 'Alternatif Menü', 
-      description: 'Modern ve sağlıklı alternatifler',
-      items: ['Brokoli Çorbası', 'Izgara Tavuk', 'Kinoa Salatası', 'Fresh Juice', 'Chia Puding'],
-      image: '🥗',
-      popularity: 32
-    }
-  };
+        // Menü seçenekleri (haftalık menü)
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        const weekEndStr = weekEnd.toISOString().split('T')[0];
+        const menuRes = await fetch(`/api/individual/${companyId}/${userId}/menus?from_date=${weekStartStr}&to_date=${weekEndStr}`);
+        const menuData = await menuRes.json();
+        // menuData ör: { menus: { '2025-01-20': { GELENEKSEL: {...}, ALTERNATIF: {...} }, ... } }
+        // Burada örnek olarak haftanın ilk günü menüsünü alıyoruz
+        if (menuData.menus && Object.keys(menuData.menus).length > 0) {
+          // Haftanın ilk günü menüsünü göster
+          setMenuOptions(menuData.menus[Object.keys(menuData.menus)[0]]);
+        }
+      } catch (e) {
+        setShifts([]);
+        setMenuOptions({});
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchShiftsAndMenus();
+    // eslint-disable-next-line
+  }, [companyId, userId, currentWeek]);
 
   // Haftalık tarih hesaplama
   const getWeekDates = (weekOffset = 0) => {
@@ -108,12 +120,35 @@ const MealSelection = () => {
     return date < today;
   };
 
+  // Seçim yapınca state'e ekle
   const handleMealChoice = (date, choice) => {
     const dateStr = date.toISOString().split('T')[0];
     setSelections(prev => ({
       ...prev,
       [dateStr]: choice
     }));
+  };
+
+  // Seçimleri kaydet API
+  const handleSaveSelections = async () => {
+    setLoading(true);
+    try {
+      const payload = Object.entries(selections).map(([date, choice]) => ({
+        date,
+        choice,
+        shift_id: selectedShift
+      }));
+      await fetch(`/api/individual/${companyId}/${userId}/meal-choices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choices: payload })
+      });
+      alert('Seçimleriniz kaydedildi!');
+    } catch (e) {
+      alert('Seçimler kaydedilemedi!');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getSelectionForDate = (date) => {
@@ -183,6 +218,7 @@ const MealSelection = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {loading && <div className="text-center text-orange-600 font-bold">Yükleniyor...</div>}
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -285,6 +321,13 @@ const MealSelection = () => {
               );
             }
 
+            // Her gün için menü API'den geliyorsa, o günün menüsünü kullan
+            // Eğer yoksa, haftanın ilk günü menüsünü göster (örnek amaçlı)
+            let dayMenuOptions = menuOptions;
+            if (typeof menuOptions === 'object' && menuOptions !== null && menuOptions[date.toISOString().split('T')[0]]) {
+              dayMenuOptions = menuOptions[date.toISOString().split('T')[0]];
+            }
+
             return (
               <Card key={date.toISOString()}>
                 <CardHeader>
@@ -294,9 +337,9 @@ const MealSelection = () => {
                         <ChefHat className="h-5 w-5 text-orange-500" />
                         <span>{dayName}, {formatDate(date)}</span>
                         {isPast && <Badge variant="secondary">Geçmiş</Badge>}
-                        {getSelectionForDate(date) && (
+                        {getSelectionForDate(date) && dayMenuOptions[getSelectionForDate(date)] && (
                           <Badge className="bg-green-100 text-green-700 border-green-200">
-                            Seçildi: {menuOptions[getSelectionForDate(date)].name}
+                            Seçildi: {dayMenuOptions[getSelectionForDate(date)].name}
                           </Badge>
                         )}
                       </CardTitle>
@@ -318,7 +361,7 @@ const MealSelection = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {Object.entries(menuOptions).map(([menuType, menuData]) => 
+                    {dayMenuOptions && Object.entries(dayMenuOptions).map(([menuType, menuData]) => 
                       renderMealCard(date, menuType, menuData)
                     )}
                   </div>
@@ -333,7 +376,8 @@ const MealSelection = () => {
           <Button 
             size="lg"
             className="px-12 py-3 text-lg"
-            disabled={Object.keys(selections).length === 0}
+            disabled={Object.keys(selections).length === 0 || loading}
+            onClick={handleSaveSelections}
           >
             <Check className="h-5 w-5 mr-2" />
             Seçimleri Kaydet ({Object.keys(selections).length} gün)

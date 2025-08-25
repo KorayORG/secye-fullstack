@@ -5980,11 +5980,18 @@ async def create_individual_request(
             if field not in request_data:
                 raise HTTPException(status_code=400, detail=f"'{field}' alanı zorunludur")
         
-        # Create new request
+        # Corporate'ın anlaşmalı olduğu catering_id'yi bul
+        catering_id = None
+        # Varsayım: corporate_id ile partnership veya benzeri bir koleksiyonda catering_id tutuluyor
+        partnership = await db.partnerships.find_one({"corporate_id": company_id, "is_active": True})
+        if partnership and "catering_id" in partnership:
+            catering_id = partnership["catering_id"]
+
         new_request = {
             "id": str(uuid.uuid4()),
             "user_id": user_id,
             "company_id": company_id,
+            "catering_id": catering_id,
             "title": request_data["title"],
             "message": request_data["message"],
             "tags": request_data.get("tags", []),
@@ -5993,7 +6000,6 @@ async def create_individual_request(
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc)
         }
-        
         await db.requests.insert_one(new_request)
         
         return {

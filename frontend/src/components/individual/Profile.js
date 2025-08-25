@@ -79,70 +79,76 @@ const Profile = () => {
     requestUpdates: true
   });
 
-  // Dummy user data - gerçekte API'den gelecek
-  const userInfo = {
-    fullName: 'Ahmet Yılmaz',
-    phone: '+905551234567',
-    email: 'ahmet.yilmaz@atech.com.tr',
-    company: 'A-Tech Yazılım',
-    joinDate: '2024-03-15',
-    lastLogin: '2025-01-20T14:30:00Z',
-    loginCount: 156,
-    mealCount: 89,
-    averageRating: 4.2
-  };
-
-  const securityLogs = [
-    {
-      id: '1',
-      action: 'Giriş yapıldı',
-      device: 'Chrome - Windows',
-      location: 'İstanbul, TR',
-      timestamp: '2025-01-20T14:30:00Z',
-      success: true
-    },
-    {
-      id: '2',
-      action: 'Şifre değiştirildi',
-      device: 'Chrome - Windows',
-      location: 'İstanbul, TR', 
-      timestamp: '2025-01-18T09:15:00Z',
-      success: true
-    },
-    {
-      id: '3',
-      action: 'Başarısız giriş denemesi',
-      device: 'Safari - iPhone',
-      location: 'İstanbul, TR',
-      timestamp: '2025-01-17T22:45:00Z',
-      success: false
-    }
-  ];
+  const [userInfo, setUserInfo] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+    company: '',
+    joinDate: '',
+    lastLogin: '',
+    loginCount: 0,
+    mealCount: 0,
+    averageRating: 0
+  });
+  const [securityLogs, setSecurityLogs] = useState([]);
+  // API'den profil ve güvenlik verilerini çek
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/individual/${companyId}/${userId}/profile`);
+        const data = await res.json();
+        setUserInfo({
+          fullName: data.full_name || '',
+          phone: data.phone || '',
+          email: data.email || '',
+          company: data.company || '',
+          joinDate: data.join_date || '',
+          lastLogin: data.last_login || '',
+          loginCount: data.login_count || 0,
+          mealCount: data.meal_count || 0,
+          averageRating: data.average_rating || 0
+        });
+        setProfileForm({
+          fullName: data.full_name || '',
+          phone: data.phone || '',
+          email: data.email || ''
+        });
+        // Güvenlik logları
+        const logRes = await fetch(`/api/individual/${companyId}/${userId}/profile/security-logs`);
+        const logData = await logRes.json();
+        setSecurityLogs(logData.logs || []);
+      } catch (e) {
+        setUserInfo({
+          fullName: '', phone: '', email: '', company: '', joinDate: '', lastLogin: '', loginCount: 0, mealCount: 0, averageRating: 0
+        });
+        setSecurityLogs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+    // eslint-disable-next-line
+  }, [companyId, userId]);
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert('Yeni şifreler eşleşmiyor');
       return;
     }
-
     setLoading(true);
-    
     try {
-      // API çağrısı burada yapılacak
-      console.log('Password change:', {
-        current_password: passwordForm.currentPassword,
-        new_password: passwordForm.newPassword
+      const res = await fetch(`/api/individual/${companyId}/${userId}/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: passwordForm.currentPassword,
+          new_password: passwordForm.newPassword
+        })
       });
-      
-      // Başarı durumu
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      
+      if (!res.ok) throw new Error('Şifre değiştirme başarısız');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       alert('Şifre başarıyla değiştirildi');
     } catch (error) {
       alert('Şifre değiştirme başarısız: ' + error.message);
@@ -182,6 +188,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {loading && <div className="text-center text-orange-600 font-bold">Yükleniyor...</div>}
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">

@@ -65,70 +65,10 @@ const RequestSuggestion = () => {
     urgency: 'med'
   });
 
-  // Dummy veri - gerçekte API'den gelecek
-  const requests = [
-    {
-      id: '1',
-      title: 'Vejetaryen menü seçeneği eklenmesi',
-      message: 'Merhaba, uzun zamandır şirketimizde çalışıyorum ve vejetaryen beslenme düzeni takip ediyorum. Menülerimizde daha fazla vejetaryen seçeneğin olması harika olurdu.',
-      tags: ['yemek', 'vejetaryen', 'sağlık'],
-      urgency: 'med',
-      status: 'in_progress',
-      created_at: '2025-01-18T10:30:00Z',
-      updated_at: '2025-01-19T14:15:00Z',
-      response: 'Öneriniz değerlendirilmek üzere catering firmasına iletildi.',
-      votes: 12
-    },
-    {
-      id: '2',
-      title: 'Yemek servisi saatlerinin uzatılması',
-      message: 'Vardiya sistemimizde çalışanlar için yemek servisi saatlerinin biraz daha esnek olması çok faydalı olacaktır. Özellikle geç kalan toplantılarda yemek kaçırıyoruz.',
-      tags: ['servis', 'vardiya', 'saat'],
-      urgency: 'high',
-      status: 'open',
-      created_at: '2025-01-17T16:45:00Z',
-      votes: 8
-    },
-    {
-      id: '3',
-      title: 'Menü kalitesinin artırılması',
-      message: 'Son dönemde menü kalitesinde düşüş gözlemleniyor. Özellikle sebzelerin tazeliği ve yemeklerin sıcaklığı konusunda iyileştirme yapılabilir.',
-      tags: ['kalite', 'yemek', 'şikayet'],
-      urgency: 'med',
-      status: 'resolved',
-      created_at: '2025-01-15T09:20:00Z',
-      response: 'Kalite kontrol süreçlerimiz gözden geçirildi ve catering firmasıyla kalite standartları konuşuldu.',
-      votes: 15
-    },
-    {
-      id: '4',
-      title: 'Allerjen bilgilerin menüde belirtilmesi',
-      message: 'Gıda alerjim olduğu için menülerde allerjen bilgilerin açıkça belirtilmesi çok önemli. Bu konuda daha detaylı bilgilendirme yapılabilir.',
-      tags: ['allerjen', 'sağlık', 'bilgilendirme'],
-      urgency: 'high',
-      status: 'closed',
-      created_at: '2025-01-12T11:10:00Z',
-      response: 'Allerjen bilgileri tüm menülere eklenmiştir. Dijital menü panellerinde detaylı allerjen listesi bulabilirsiniz.',
-      votes: 6
-    }
-  ];
-
-  const popularTags = [
-    { name: 'yemek', count: 25 },
-    { name: 'kalite', count: 18 },
-    { name: 'servis', count: 12 },
-    { name: 'sağlık', count: 10 },
-    { name: 'hijyen', count: 8 },
-    { name: 'fiyat', count: 6 },
-    { name: 'çevre', count: 4 }
-  ];
-
-  const stats = {
-    totalRequests: requests.length,
-    openRequests: requests.filter(r => r.status === 'open').length,
-    resolvedRequests: requests.filter(r => r.status === 'resolved').length,
-    averageResponseTime: '2.5 gün'
-  };
+  const [requests, setRequests] = useState([]);
+  const [popularTags, setPopularTags] = useState([]);
+  const [stats, setStats] = useState({ totalRequests: 0, openRequests: 0, resolvedRequests: 0, averageResponseTime: '-' });
+  const [loading, setLoading] = useState(false);
 
   const statusConfig = {
     open: { label: 'Açık', color: 'bg-blue-100 text-blue-700', icon: Clock },
@@ -143,12 +83,57 @@ const RequestSuggestion = () => {
     high: { label: 'Yüksek', color: 'bg-red-100 text-red-600' }
   };
 
-  const handleSubmit = (e) => {
+  // API'den istekleri çek
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/individual/${companyId}/${userId}/requests?status=${filterStatus === 'all' ? '' : filterStatus}`);
+      const data = await res.json();
+      setRequests(data.requests || []);
+      // Popüler etiketler ve istatistikler için ek API çağrısı yapılabilir
+      // Örnek: /api/individual/{company_id}/{user_id}/requests/tags
+      const tagRes = await fetch(`/api/individual/${companyId}/${userId}/requests/tags`);
+      const tagData = await tagRes.json();
+      setPopularTags(tagData.tags || []);
+      // İstatistikler
+      setStats({
+        totalRequests: data.total || (data.requests ? data.requests.length : 0),
+        openRequests: (data.requests || []).filter(r => r.status === 'open').length,
+        resolvedRequests: (data.requests || []).filter(r => r.status === 'resolved').length,
+        averageResponseTime: data.average_response_time || '-'
+      });
+    } catch (e) {
+      setRequests([]);
+      setPopularTags([]);
+      setStats({ totalRequests: 0, openRequests: 0, resolvedRequests: 0, averageResponseTime: '-' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+    // eslint-disable-next-line
+  }, [companyId, userId, filterStatus]);
+
+  // Yeni istek gönder
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // API çağrısı burada yapılacak
-    setIsDialogOpen(false);
-    setFormData({ title: '', message: '', tags: [], urgency: 'med' });
+    setLoading(true);
+    try {
+      await fetch(`/api/individual/${companyId}/${userId}/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      setIsDialogOpen(false);
+      setFormData({ title: '', message: '', tags: [], urgency: 'med' });
+      fetchRequests();
+    } catch (e) {
+      alert('İstek gönderilemedi!');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTagInput = (e) => {
@@ -191,6 +176,7 @@ const RequestSuggestion = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {loading && <div className="text-center text-orange-600 font-bold">Yükleniyor...</div>}
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
