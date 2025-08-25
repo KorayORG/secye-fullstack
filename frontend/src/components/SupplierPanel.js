@@ -467,11 +467,14 @@ const SupplierPanel = () => {
                             onChange={e => handleOrderStatusChange(order.id, e.target.value)}
                           >
                             <option value="pending">Beklemede</option>
-                            <option value="confirmed">İşleme Alındı</option>
+                            <option value="confirmed">Onaylandı</option>
                             <option value="preparing">Hazırlanıyor</option>
                             <option value="delivered">Teslim Edildi</option>
                             <option value="cancelled">İptal Edildi</option>
                           </select>
+                          {orderStatusUpdating[order.id] && (
+                            <div className="text-xs text-gray-500 mt-1">Güncelleniyor...</div>
+                          )}
                         </td>
                       </tr>
                     ))}
