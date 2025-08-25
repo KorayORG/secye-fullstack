@@ -385,6 +385,85 @@ const SupplierPanel = () => {
             <StorefrontManagement companyId={getCompanyIdFromPath()} />
           </TabsContent>
 
+          {/* Supplier Orders Tab */}
+          <TabsContent value="orders" className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Siparişler</h2>
+            {ordersError && (
+              <Alert className="border-red-200 bg-red-50 mb-4">
+                <AlertDescription className="text-red-800">{ordersError}</AlertDescription>
+              </Alert>
+            )}
+            {ordersLoading ? (
+              <div className="text-center p-8 text-gray-500">Siparişler yükleniyor...</div>
+            ) : supplierOrders.length === 0 ? (
+              <div className="text-center p-8 text-gray-500">Sipariş bulunamadı</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Alıcı</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Ürünler</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Adet</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Birim</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Fiyat</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Durum</th>
+                      <th className="py-2 px-3 text-left text-sm font-semibold">Güncelle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplierOrders.map(order => (
+                      <tr key={order.id} className="border-b">
+                        <td className="py-2 px-3">{order.buyer_company_name || order.catering_id}</td>
+                        <td className="py-2 px-3">
+                          <ul className="list-disc ml-4">
+                            {order.items && order.items.length > 0 ? (
+                              order.items.map((item, idx) => (
+                                <li key={idx} className="mb-1">
+                                  <span className="font-semibold">{item.product_name || item.product_id}</span>
+                                  {" | "}
+                                  <span>Miktar: {item.quantity || '-'}</span>
+                                  {" | "}
+                                  <span>Birim: {item.unit_type || item.unit || '-'}</span>
+                                  {" | "}
+                                  <span>Birim Fiyat: ₺{item.unit_price ? Number(item.unit_price).toFixed(2) : '-'}</span>
+                                </li>
+                              ))
+                            ) : (
+                              <li>-</li>
+                            )}
+                          </ul>
+                        </td>
+                        <td className="py-2 px-3">
+                          {order.items && order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                        </td>
+                        <td className="py-2 px-3">
+                          {order.items && order.items[0]?.unit_type || '-'}
+                        </td>
+                        <td className="py-2 px-3">₺{order.total_amount?.toFixed(2)}</td>
+                        <td className="py-2 px-3">{order.status}</td>
+                        <td className="py-2 px-3">
+                          <select
+                            className="border rounded px-2 py-1 text-sm"
+                            value={order.status}
+                            disabled={orderStatusUpdating[order.id]}
+                            onChange={e => handleOrderStatusChange(order.id, e.target.value)}
+                          >
+                            <option value="pending">Beklemede</option>
+                            <option value="confirmed">İşleme Alındı</option>
+                            <option value="preparing">Hazırlanıyor</option>
+                            <option value="delivered">Teslim Edildi</option>
+                            <option value="cancelled">İptal Edildi</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
+
           {/* Mail System Tab */}
           <TabsContent value="mail">
             <MailSystem 
