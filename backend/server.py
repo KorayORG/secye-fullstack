@@ -3757,14 +3757,16 @@ async def register_individual(request: RegisterIndividualRequest):
         # Hash password
         password_hash = ph.hash(request.password)
         
-        # Create user
+        # Create user with company membership
         user_data = {
+            "id": str(uuid.uuid4()),
             "full_name": request.full_name,
             "phone": request.phone,
             "password_hash": password_hash,
-            "type": "individual",
-            "company_id": request.company_id,
-            "is_active": True
+            "company_ids": [request.company_id],  # Add to tenant membership array
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
         }
         await db.users.insert_one(user_data)
         return {"success": True, "message": "Kayıt başarılı"}
