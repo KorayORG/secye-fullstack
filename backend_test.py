@@ -12,8 +12,8 @@ load_dotenv('frontend/.env')
 class SecYeAPITester:
     def __init__(self):
         # Use the production backend URL from frontend/.env
-        self.base_url = "https://foodsupply-sys.preview.emergentagent.com"
-        self.api_url = "https://foodsupply-sys.preview.emergentagent.com/api"
+        self.base_url = "https://order-stats-fix.preview.emergentagent.com"
+        self.api_url = "https://order-stats-fix.preview.emergentagent.com/api"
         self.tests_run = 0
         self.tests_passed = 0
         self.company_id = None
