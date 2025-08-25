@@ -365,6 +365,7 @@ class Order(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     supplier_id: str
     catering_id: str
+    items: Optional[List[Dict[str, Any]]] = []  # Sipariş kalemlerini burada tut
     status: Literal['pending', 'confirmed', 'preparing', 'delivered', 'cancelled'] = 'pending'
     total_amount: float
     delivery_address: Optional[str] = None
