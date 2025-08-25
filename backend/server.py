@@ -5283,8 +5283,10 @@ async def create_order_for_catering_supplier(
             order_items.append({
                 "id": str(uuid.uuid4()),
                 "product_id": product_id,
+                "product_name": product["name"],  # Ürün adını da ekle
                 "quantity": quantity,
                 "unit_price": unit_price,
+                "unit_type": product.get("unit_type", "adet"),  # Birim tipini de ekle
                 "total_price": total_price
             })
 
