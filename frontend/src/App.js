@@ -46,11 +46,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <IndividualLayout>
-                  {/* TODO: Create MealSelection component */}
-                  <div className="p-8 text-center">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-4">Seçim Yap</h2>
-                    <p className="text-gray-600">Bu sayfa yakında tamamlanacak...</p>
-                  </div>
+                  <MealSelection />
                 </IndividualLayout>
               </ProtectedRoute>
             } 
